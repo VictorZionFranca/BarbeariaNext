@@ -17,7 +17,7 @@ export default function Sidebar() {
   return (
     <aside
       className={`bg-white text-blue-900 h-full transition-all duration-500 ${
-        isOpen ? "w-60" : "w-16"
+        isOpen ? "w-64" : "w-16"
       }`}
     >
       {/* Botão para abrir/fechar o sidebar */}
