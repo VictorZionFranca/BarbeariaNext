@@ -1,8 +1,7 @@
 export default function Footer() {
-    return (
-      <footer className="bg-gray-200 border-t-blue-900 border text-black p-4 text-center shadow">
-        Footer
-      </footer>
-    );
-  }
-  
+  return (
+    <footer className="bg-gray-200 border-t-blue-900 border text-blue-900 p-4 text-center pt-6">
+      &copy; Copyright <strong><span>Gestão Barbeira</span></strong>. Todos os Direitos Reservados
+    </footer>
+  );
+}

@@ -1,7 +1,7 @@
 import Header from "./components/Header";
 import Sidebar from "./components/SideBar";
 import Footer from "./components/Footer";
-import '../app/globals.css'
+import '../app/globals.css';
 
 export default function RootLayout({
   children,
@@ -11,25 +11,27 @@ export default function RootLayout({
   return (
     <html lang="pt-br">
       <body className="relative flex flex-col h-screen">
-        <div className="z-20">
-          {/* Header */}
+        {/* Header fixo */}
+        <div className="z-20 fixed top-0 left-0 w-full bg-white">
           <Header />
         </div>
 
         {/* Conteúdo principal com Sidebar e Main */}
-        <div className="relative flex flex-1 z-10">
-          {/* Sidebar */}
-          <div className="relative z-10 sidebar">
+        <div className="relative flex flex-1 z-10 pt-16"> {/* pt-16 para espaçar o conteúdo abaixo do header fixo */}
+          {/* Sidebar fixo */}
+          <div className="z-30 fixed top-16 left-0 bottom-0 bg-gray-800 text-white">
             <Sidebar />
           </div>
 
-          {/* Main Content */}
-          <main className="flex-1 bg-gray-200 p-4">{children}</main>
-        </div>
-
-        {/* Footer */}
-        <div className="z-5">
-          <Footer />
+          {/* Main Content (ajustado para a largura do Sidebar fixo) */}
+          <main className="flex-1 ml-16 bg-gray-200 py-4 z-10">
+            <div className="h-auto px-6">
+              {children}
+            </div>  
+            <div className="mt-auto">
+              <Footer />
+            </div>
+          </main>
         </div>
       </body>
     </html>
