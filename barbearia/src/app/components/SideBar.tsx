@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BsFillGridFill, BsCalendarCheck, BsFillPersonFill, BsFilePerson,
-  BsScissors, BsBoxSeam, BsCashCoin, BsArrowBarLeft, BsArrowBarRight, 
-  BsBoxArrowInLeft } from "react-icons/bs";
+  BsScissors, BsBoxSeam, BsCashCoin, BsArrowBarLeft, BsArrowBarRight,
+  BsBoxArrowInLeft
+} from "react-icons/bs";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,9 +24,8 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`bg-white text-blue-900 h-full transition-all duration-300 shadow-md ${
-        isOpen ? "w-64" : "w-16"
-      }`}
+      className={`bg-white text-blue-900 h-full transition-all duration-300 shadow-md ${isOpen ? "w-64" : "w-16"
+        } flex flex-col`}
     >
       {/* Botão para abrir/fechar o sidebar */}
       <button
@@ -36,7 +36,7 @@ export default function Sidebar() {
       </button>
 
       {/* Navegação */}
-      <nav className="mt-4 flex justify-center">
+      <nav className="flex flex-col flex-grow">
         <ul>
           {[
             { href: "/", icon: <BsFillGridFill />, label: "Dashboard" },
@@ -46,29 +46,23 @@ export default function Sidebar() {
             { href: "/servicos", icon: <BsScissors />, label: "Serviços" },
             { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
             { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
-            { href: "/login", icon: <BsBoxArrowInLeft />, label: "Sair" },
           ].map((item, index) => (
             <Link href={item.href} key={item.href}>
               <li
-                className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 ${
-                  pathname === item.href
-                    ? "bg-gray-300 text-blue-500"
-                    : "hover:bg-gray-200"
-                }`}
-              >
-                {/* Ícone fixo */}
-                {item.icon}
-
-                {/* Texto com transição suave somente ao abrir */}
-                <span
-                  className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${
-                    isOpen
-                      ? "opacity-100 max-w-full ml-2"
-                      : "opacity-0 max-w-0"
+                className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 ${pathname === item.href
+                  ? "bg-gray-300 text-blue-500"
+                  : "hover:bg-gray-200"
                   }`}
+              >
+                {item.icon}
+                <span
+                  className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${isOpen
+                    ? "opacity-100 max-w-full ml-2"
+                    : "opacity-0 max-w-0"
+                    }`}
                   style={{
-                    transitionProperty: isOpen ? "opacity, max-width" : "none", // Ativa transição somente ao abrir
-                    transitionDelay: isOpen ? `${index * 0.12}s` : "0s", // Efeito gradual ao abrir
+                    transitionProperty: isOpen ? "opacity, max-width" : "none",
+                    transitionDelay: isOpen ? `${index * 0.12}s` : "0s",
                   }}
                 >
                   {item.label}
@@ -76,6 +70,28 @@ export default function Sidebar() {
               </li>
             </Link>
           ))}
+        </ul>
+
+        {/* Botão "Sair" fixo ao final */}
+        <ul className="mt-auto">
+          <Link href="/login">
+            <li
+              className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-200 ${pathname === "/login"
+                ? "bg-gray-300 text-blue-500"
+                : "hover:bg-gray-200"
+                }`}
+            >
+              <BsBoxArrowInLeft />
+              <span
+                className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${isOpen
+                  ? "opacity-100 max-w-full ml-2"
+                  : "opacity-0 max-w-0"
+                  }`}
+              >
+                Sair
+              </span>
+            </li>
+          </Link>
         </ul>
       </nav>
     </aside>
