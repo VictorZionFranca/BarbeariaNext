@@ -24,7 +24,7 @@ export default function RootLayout({
           </div>
 
           {/* Main Content (ajustado para a largura do Sidebar fixo) */}
-          <main className="flex-1 ml-16 bg-gray-200 py-4 z-10">
+          <main className="flex-1 ml-16 bg-gray-100 pt-4 z-10">
             <div className="h-auto px-6">
               {children}
             </div>  

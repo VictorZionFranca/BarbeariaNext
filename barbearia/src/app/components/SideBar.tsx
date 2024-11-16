@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BsFillGridFill, BsCalendarCheck, BsFillPersonFill, BsFilePerson,
-  BsScissors, BsBoxSeam, BsCashCoin, BsCaretLeftFill, BsCaretRightFill
-} from "react-icons/bs";
+  BsScissors, BsBoxSeam, BsCashCoin, BsArrowBarLeft, BsArrowBarRight, 
+  BsBoxArrowInLeft } from "react-icons/bs";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,18 +16,23 @@ export default function Sidebar() {
     setIsOpen(!isOpen);
   };
 
+  // Fecha o sidebar quando a rota muda
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
   return (
     <aside
-      className={`bg-white text-blue-900 h-full transition-all duration-300 ${
+      className={`bg-white text-blue-900 h-full transition-all duration-300 shadow-md ${
         isOpen ? "w-64" : "w-16"
       }`}
     >
       {/* Botão para abrir/fechar o sidebar */}
       <button
         onClick={toggleSidebar}
-        className="py-3 px-6 focus:outline-none font-semibold hover:bg-gray-200 rounded-lg"
+        className="py-3 px-6 focus:outline-none font-semibold hover:bg-gray-200 rounded-lg mt-2"
       >
-        {isOpen ? <BsCaretLeftFill /> : <BsCaretRightFill />}
+        {isOpen ? <BsArrowBarLeft /> : <BsArrowBarRight />}
       </button>
 
       {/* Navegação */}
@@ -41,10 +46,11 @@ export default function Sidebar() {
             { href: "/servicos", icon: <BsScissors />, label: "Serviços" },
             { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
             { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
+            { href: "/login", icon: <BsBoxArrowInLeft />, label: "Sair" },
           ].map((item, index) => (
             <Link href={item.href} key={item.href}>
               <li
-                className={`flex items-center gap-2 py-2 mb-1 px-6 font-semibold rounded-lg transition-all duration-300 ${
+                className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 ${
                   pathname === item.href
                     ? "bg-gray-300 text-blue-500"
                     : "hover:bg-gray-200"
