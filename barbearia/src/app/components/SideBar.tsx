@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BsFillGridFill, BsCalendarCheck, BsFillPersonFill, BsFilePerson,
   BsScissors, BsBoxSeam, BsCashCoin, BsArrowBarLeft, BsArrowBarRight,
-  BsBoxArrowInLeft
+  BsBoxArrowInLeft, BsList
 } from "react-icons/bs";
 
 export default function Sidebar() {
@@ -30,9 +30,9 @@ export default function Sidebar() {
       {/* Botão para abrir/fechar o sidebar */}
       <button
         onClick={toggleSidebar}
-        className="py-3 px-6 focus:outline-none font-semibold hover:bg-gray-200 rounded-lg mt-2"
+        className="py-3 px-5 focus:outline-none hover:bg-gray-200 rounded-lg mt-2 mb-1 text-2xl"
       >
-        {isOpen ? <BsArrowBarLeft /> : <BsArrowBarRight />}
+        {isOpen ? <BsList /> : <BsList />}
       </button>
 
       {/* Navegação */}
