@@ -5,8 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BsFillGridFill, BsCalendarCheck, BsFillPersonFill, BsFilePerson,
-  BsScissors, BsBoxSeam, BsCashCoin, BsArrowBarLeft, BsArrowBarRight,
-  BsBoxArrowInLeft, BsList
+  BsScissors, BsBoxSeam, BsCashCoin,BsBoxArrowInLeft, BsList
 } from "react-icons/bs";
 
 export default function Sidebar() {

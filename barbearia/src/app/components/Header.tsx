@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 export default function Header() {
+  // Dados fictícios (para teste)
+  const userName = "Gestor";
+
   return (
     <header className="flex justify-between items-center p-4 bg-white shadow">
       <div className="flex-1 font-semibold text-2xl text-blue-900">
@@ -8,9 +11,11 @@ export default function Header() {
           Gestão Barbearia
         </Link>
       </div>
-      <div className="flex-1 text-right text-black font-semibold">
-        Gestor
-      </div>
-    </header>
+      <Link href="/perfil">
+        <div className="flex-1 flex justify-end items-center gap-4">
+          <span className="text-black font-semibold">{userName}</span>
+        </div>
+      </Link>
+    </header >
   );
 }
