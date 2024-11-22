@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation"; // Importar o useRouter
+import { useRouter } from "next/navigation";
 import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../lib/firebaseConfig"; // Certifique-se de importar o auth corretamente
+import { auth } from "../../lib/firebaseConfig";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,7 +13,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const router = useRouter(); // Instanciar o roteador
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -21,13 +21,28 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Tentar autenticar o usuário no Firebase
       await signInWithEmailAndPassword(auth, email, password);
-      alert("Login realizado com sucesso!");
-      router.push("/"); // Redirecionar para a página principal
-    } catch (err: any) {
-      console.error("Erro no login:", err);
-      setError("Email ou senha inválidos."); // Exibir erro ao usuário
+      // Redireciona para a página original ou para "/"
+      const returnUrl = new URLSearchParams(window.location.search).get("returnUrl") || "/";
+      router.push(returnUrl);
+    } catch (err) {
+      const firebaseError = err as { code: string; message: string }; // Tipagem do erro
+      console.error("Erro no login:", firebaseError);
+
+      // Mapeamento de erros do Firebase Auth
+      switch (firebaseError.code) {
+        case "auth/user-not-found":
+          setError("Usuário não encontrado.");
+          break;
+        case "auth/wrong-password":
+          setError("Senha incorreta.");
+          break;
+        case "auth/invalid-email":
+          setError("Email inválido.");
+          break;
+        default:
+          setError("Erro ao fazer login. Tente novamente.");
+      }
     } finally {
       setLoading(false);
     }
