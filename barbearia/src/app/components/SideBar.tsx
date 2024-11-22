@@ -89,7 +89,7 @@ export default function Sidebar() {
         <ul className="mt-auto">
           <li
             onClick={handleLogout}  // Chama a função de logout ao clicar
-            className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-200`}
+            className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-200  cursor-pointer`}
           >
             <BsBoxArrowInLeft />
             <span

@@ -1,6 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@layer utilities {
+  input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important; /* Ajuste a cor do fundo */
+    -webkit-text-fill-color: #000000 !important; /* Ajuste a cor do texto */
+    transition: background-color 5000s ease-in-out 0s;
+  }
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important; /* Substitua pela cor de fundo desejada */
+  -webkit-text-fill-color: #000000 !important; /* Substitua pela cor do texto desejada */
+  border: 1px solid #ccc !important; /* Garante que o autofill respeite o estilo do border */
+}
+
+input:-webkit-autofill {
+  background-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #000000 !important;
+  border-color: #ccc !important;
+}
 
 :root {
   --background: #ffffff;
@@ -19,5 +41,3 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
-
-
