@@ -3,25 +3,33 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation"; // Importar o useRouter
 import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../lib/firebaseConfig"; // Certifique-se de importar o auth corretamente
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter(); // Instanciar o roteador
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    // Simular validação de login
-    if (email === "vzion435@gmail.com" && password === "123456") {
+    try {
+      // Tentar autenticar o usuário no Firebase
+      await signInWithEmailAndPassword(auth, email, password);
       alert("Login realizado com sucesso!");
       router.push("/"); // Redirecionar para a página principal
-    } else {
-      setError("Email ou senha inválidos.");
+    } catch (err: any) {
+      console.error("Erro no login:", err);
+      setError("Email ou senha inválidos."); // Exibir erro ao usuário
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,15 +78,16 @@ export default function Login() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-3 flex items-center text-gray-700 text-xl"
               >
-                {showPassword ? <BsEyeSlashFill/> : <BsEyeFill/>}
+                {showPassword ? <BsEyeSlashFill /> : <BsEyeFill />}
               </button>
             </div>
           </div>
           <button
             type="submit"
             className="w-full bg-blue-900 text-white p-2 rounded font-semibold hover:bg-blue-800"
+            disabled={loading}
           >
-            Entrar
+            {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
       </div>

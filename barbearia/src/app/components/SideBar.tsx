@@ -1,16 +1,20 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";  // Importa o roteador para redirecionamento
+import { signOut } from "firebase/auth";  // Importa a função de logout do Firebase
+import { auth } from "../../lib/firebaseConfig";  // Importa a configuração do Firebase
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BsFillGridFill, BsCalendarCheck, BsFillPersonFill, BsFilePerson,
-  BsScissors, BsBoxSeam, BsCashCoin,BsBoxArrowInLeft, BsList
+  BsScissors, BsBoxSeam, BsCashCoin, BsBoxArrowInLeft, BsList
 } from "react-icons/bs";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();  // Instancia o roteador para redirecionar após o logout
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -20,6 +24,16 @@ export default function Sidebar() {
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
+  // Função para lidar com o logout
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);  // Realiza o logout
+      router.push("/login");  // Redireciona para a página de login
+    } catch (error) {
+      console.error("Erro ao deslogar: ", error);
+    }
+  };
 
   return (
     <aside
@@ -37,7 +51,7 @@ export default function Sidebar() {
       {/* Navegação */}
       <nav className="flex flex-col flex-grow">
         <ul>
-          {[
+          {[ 
             { href: "/", icon: <BsFillGridFill />, label: "Dashboard" },
             { href: "/agendamentos", icon: <BsCalendarCheck />, label: "Agendamentos" },
             { href: "/clientes", icon: <BsFillPersonFill />, label: "Clientes" },
@@ -73,24 +87,20 @@ export default function Sidebar() {
 
         {/* Botão "Sair" fixo ao final */}
         <ul className="mt-auto">
-          <Link href="/login">
-            <li
-              className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-200 ${pathname === "/login"
-                ? "bg-gray-300 text-blue-500"
-                : "hover:bg-gray-200"
+          <li
+            onClick={handleLogout}  // Chama a função de logout ao clicar
+            className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-200`}
+          >
+            <BsBoxArrowInLeft />
+            <span
+              className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${isOpen
+                ? "opacity-100 max-w-full ml-2"
+                : "opacity-0 max-w-0"
                 }`}
             >
-              <BsBoxArrowInLeft />
-              <span
-                className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${isOpen
-                  ? "opacity-100 max-w-full ml-2"
-                  : "opacity-0 max-w-0"
-                  }`}
-              >
-                Sair
-              </span>
-            </li>
-          </Link>
+              Sair
+            </span>
+          </li>
         </ul>
       </nav>
     </aside>
