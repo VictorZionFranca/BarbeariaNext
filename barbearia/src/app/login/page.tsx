@@ -7,6 +7,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebaseConfig';
 import { BsEyeFill, BsEyeSlashFill } from 'react-icons/bs';
 import '../globals.css';
+import Image from "next/image";
 
 export default function Login() {
   const { user, loading } = useAuth(); // Adiciona loading para tratar o estado inicial
@@ -17,6 +18,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false); // Controla o estado de carregamento do login
+  const [errorVisible, setErrorVisible] = useState(false); // Controla a visibilidade da mensagem de erro
 
   useEffect(() => {
     if (!loading && user) {
@@ -25,9 +27,22 @@ export default function Login() {
     }
   }, [user, loading, router]);
 
+  useEffect(() => {
+    // Se houver um erro, faz a mensagem aparecer e depois desaparecer após 3 segundos
+    if (error) {
+      setErrorVisible(true);
+      const timer = setTimeout(() => {
+        setErrorVisible(false);
+      }, 3000); // 3000 milissegundos = 3 segundos
+
+      // Limpeza do timer quando o componente for desmontado ou o erro mudar
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setError(''); // Limpa qualquer erro anterior
     setLoginLoading(true);
 
     try {
@@ -40,10 +55,8 @@ export default function Login() {
       // Tratamento de erros do Firebase
       switch (firebaseError.code) {
         case 'auth/user-not-found':
-          setError('Usuário não encontrado.');
-          break;
         case 'auth/wrong-password':
-          setError('Senha incorreta.');
+          setError('Email ou senha errados!');
           break;
         case 'auth/invalid-email':
           setError('Email inválido.');
@@ -67,11 +80,12 @@ export default function Login() {
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100 text-white bg-custom-gradient">
       {/* Imagem à esquerda */}
-      <div className="w-1/2 flex items-center justify-center">
-        <img
-          src='/images/LogoBarbearia.png'
-          alt="Descrição da imagem"
-          className="max-h-full max-w-full object-cover rounded-lg"
+      <div className="flex items-center justify-center">
+        <Image
+          src="/images/LogoBarbearia.png" // Caminho para a imagem
+          alt="Logo da Barbearia" // Descrição alternativa
+          width={560} // Largura em pixels
+          height={560} // Altura em pixels
         />
       </div>
 
@@ -79,18 +93,13 @@ export default function Login() {
       <div className="w-8"></div>
 
       {/* Formulário à direita */}
-      <div className="w-1/3 bg-[rgb(30,55,75)] bg-opacity-80 p-8 rounded-2xl">
-        <h1 className="text-2xl font-bold text-center mb-6 text-white">
+      <div className="w-1/4 h-3/5 bg-[rgb(30,55,75)] bg-opacity-80 p-8 rounded-2xl">
+        <h1 className="text-2xl font-bold text-center mt-5 mb-6 text-white">
           Login
         </h1>
-        {error && (
-          <div className="bg-red-100 text-red-600 p-2 rounded mb-4 text-center">
-            {error}
-          </div>
-        )}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold">
+            <label htmlFor="email" className="block text-md font-semibold mt-5">
               Email
             </label>
             <input
@@ -106,10 +115,10 @@ export default function Login() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-semibold">
+            <label htmlFor="password" className="block text-md font-semibold mt-5">
               Senha
             </label>
-            <div className="relative">
+            <div className="relative mb-5">
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
@@ -124,7 +133,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-3 flex items-center text-white text-xl"
+                className="absolute inset-y-0 right-3 flex items-center text-white text-xl autofill:text-black"
                 disabled={loginLoading}
               >
                 {showPassword ? <BsEyeSlashFill /> : <BsEyeFill />}
@@ -133,14 +142,22 @@ export default function Login() {
           </div>
           <button
             type="submit"
-            className={`w-full bg-blue-900 text-white p-2 rounded font-semibold hover:bg-blue-800 ${
-              loginLoading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`w-full bg-blue-900 text-white p-2 rounded font-semibold hover:bg-blue-800 ${loginLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             disabled={loginLoading}
           >
             {loginLoading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+
+        {/* Exibindo o erro abaixo do formulário com transição de fade */}
+        <div
+          className={`bg-red-200 text-red-600 p-2 rounded mt-20 text-center transition-opacity duration-500 
+            ease-in-out ${errorVisible ? 'opacity-100' : 'opacity-0'
+            }`}
+        >
+          {error}
+        </div>
       </div>
     </div>
   );
