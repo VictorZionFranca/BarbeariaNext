@@ -3,15 +3,15 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Configuração do Firebase
+// Configuração do Firebase usando variáveis de ambiente
 const firebaseConfig = {
-  apiKey: "AIzaSyC1L8icCO16S5So61SMpv9QYtcRAdFi0mU",
-  authDomain: "gestaobarbearia-153fc.firebaseapp.com",
-  databaseURL: "https://gestaobarbearia-153fc-default-rtdb.firebaseio.com",
-  projectId: "gestaobarbearia-153fc",
-  messagingSenderId: "432065485404",
-  appId: "1:432065485404:web:ea586cfc3332edbcdc2499",
-  measurementId: "G-8JZH0RF52R",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
 };
 
 // Inicializar o Firebase
