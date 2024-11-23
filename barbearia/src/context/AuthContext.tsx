@@ -1,23 +1,36 @@
-"use client";
-
-import { createContext, useContext, useState, useEffect } from "react";
-import { onAuthStateChanged, User } from "firebase/auth"; // Importa o tipo User
+import { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged, User } from "firebase/auth"; // Importa o tipo User do Firebase
 import { auth } from "../lib/firebaseConfig";
+import { fetchUserNameByEmail } from "../app/utils/firestoreUtils";
 
-interface AuthContextType {
-  user: User | null; // O usuário pode ser do tipo User ou null
-  loading: boolean;
-}
+type AuthContextType = {
+  user: User | null; // Substitua any pelo tipo User do Firebase
+  userName: string | null; // Nome do usuário
+  loading: boolean; // Status de carregamento
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  userName: null,
+  loading: true,
+});
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null); // Define o tipo do estado
+  const [user, setUser] = useState<User | null>(null); // Define user como User ou null
+  const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser); // currentUser será do tipo User ou null
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      setUser(authUser);
+
+      if (authUser && authUser.email) {
+        const name = await fetchUserNameByEmail(authUser.email);
+        setUserName(name); // Define o nome do usuário
+      } else {
+        setUserName(null);
+      }
+
       setLoading(false);
     });
 
@@ -25,16 +38,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, userName, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);

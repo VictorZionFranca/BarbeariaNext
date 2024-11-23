@@ -19,7 +19,7 @@ const app = initializeApp(firebaseConfig);
 
 // Configurar os serviços que você deseja usar
 const auth = getAuth(app);
-const firestore = getFirestore(app);
+const db = getFirestore(app); // Renomeie `firestore` para `db`
 
 // Exportar os serviços para uso no restante do projeto
-export { app, auth, firestore };
+export { app, auth, db };
