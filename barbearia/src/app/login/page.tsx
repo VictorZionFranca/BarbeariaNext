@@ -108,10 +108,11 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-500
-               text-white bg-[rgb(30,55,75)]"
+        text-white bg-[rgb(30,55,75)]"
               placeholder="Digite seu email"
               required
               disabled={loginLoading}
+              autoComplete="email" // Adicionando autoComplete para email
             />
           </div>
           <div>
@@ -125,10 +126,11 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-500
-                text-white bg-[rgb(30,55,75)]"
+          text-white bg-[rgb(30,55,75)]"
                 placeholder="Digite sua senha"
                 required
                 disabled={loginLoading}
+                autoComplete="current-password" // Adicionando autoComplete para senha
               />
               <button
                 type="button"
@@ -149,7 +151,6 @@ export default function Login() {
             {loginLoading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
         {/* Exibindo o erro abaixo do formulário com transição de fade */}
         <div
           className={`bg-red-200 text-red-600 p-2 rounded mt-20 text-center transition-opacity duration-500 
