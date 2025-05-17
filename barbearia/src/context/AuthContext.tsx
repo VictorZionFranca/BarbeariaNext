@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth"; // Importa o tipo User do Firebase
+import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../lib/firebaseConfig";
-import { fetchUserNameByEmail } from "../app/utils/firestoreUtils";
+import { fetchUserNameByUid } from "../app/utils/firestoreUtils"; // 👈 função atualizada
 
 type AuthContextType = {
-  user: User | null; // Substitua any pelo tipo User do Firebase
-  userName: string | null; // Nome do usuário
-  loading: boolean; // Status de carregamento
+  user: User | null;
+  userName: string | null;
+  loading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null); // Define user como User ou null
+  const [user, setUser] = useState<User | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,9 +24,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setUser(authUser);
 
-      if (authUser && authUser.email) {
-        const name = await fetchUserNameByEmail(authUser.email);
-        setUserName(name); // Define o nome do usuário
+      if (authUser) {
+        const name = await fetchUserNameByUid(authUser.uid); 
+        setUserName(name);
       } else {
         setUserName(null);
       }
