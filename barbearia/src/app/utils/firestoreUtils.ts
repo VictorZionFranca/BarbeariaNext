@@ -6,11 +6,11 @@ export async function fetchUserNameByUid(uid: string): Promise<string | null> {
   if (!uid) return null;
 
   try {
-    const userDoc = await getDoc(doc(db, "admin", uid)); // Agora busca pelo uid
+    const userDoc = await getDoc(doc(db, "admin", uid));
     if (userDoc.exists()) {
-      return userDoc.data()?.nome || null; // Retorna o campo 'nome'
+      return userDoc.data()?.nome || null;
     } else {
-      console.error(`Documento não encontrado para o uid: ${uid}`);
+      console.warn(`Documento não encontrado para o uid: ${uid}`);
       return null;
     }
   } catch (error) {

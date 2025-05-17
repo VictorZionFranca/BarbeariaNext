@@ -1,10 +1,12 @@
 import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function Header() {
   const { userName } = useAuth(); // Obtém o nome do usuário autenticado
 
   return (
+    <ProtectedRoute>
     <header className="flex justify-between items-center p-4 bg-white shadow">
       <div className="flex-1 font-semibold text-2xl text-blue-900">
         <Link href="/">Gestão Barbearia</Link>
@@ -15,5 +17,6 @@ export default function Header() {
         </div>
       </Link>
     </header>
+    </ProtectedRoute>
   );
 }

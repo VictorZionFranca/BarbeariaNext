@@ -1,29 +1,29 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '../../context/AuthContext';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../lib/firebaseConfig';
-import { BsEyeFill, BsEyeSlashFill } from 'react-icons/bs';
-import '../globals.css';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../context/AuthContext";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../lib/firebaseConfig";
+import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
+import "../globals.css";
 import Image from "next/image";
 
 export default function Login() {
   const { user, loading } = useAuth(); // Adiciona loading para tratar o estado inicial
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false); // Controla o estado de carregamento do login
   const [errorVisible, setErrorVisible] = useState(false); // Controla a visibilidade da mensagem de erro
 
   useEffect(() => {
     if (!loading && user) {
       // Redireciona para o dashboard se o usuário já estiver autenticado
-      router.replace('/');
+      router.replace("/");
     }
   }, [user, loading, router]);
 
@@ -42,27 +42,27 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(''); // Limpa qualquer erro anterior
+    setError(""); // Limpa qualquer erro anterior
     setLoginLoading(true);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.replace('/'); // Redireciona para o dashboard após o login bem-sucedido
+      router.replace("/"); // Redireciona para o dashboard após o login bem-sucedido
     } catch (err) {
       const firebaseError = err as { code: string };
-      console.error('Erro no login:', firebaseError);
+      console.error("Erro no login:", firebaseError);
 
       // Tratamento de erros do Firebase
       switch (firebaseError.code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-          setError('Email ou senha errados!');
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+          setError("Email ou senha errados!");
           break;
-        case 'auth/invalid-email':
-          setError('Email inválido.');
+        case "auth/invalid-email":
+          setError("Email inválido.");
           break;
         default:
-          setError('Erro ao fazer login. Tente novamente.');
+          setError("Erro ao fazer login. Tente novamente.");
       }
     } finally {
       setLoginLoading(false);
@@ -82,10 +82,11 @@ export default function Login() {
       {/* Imagem à esquerda */}
       <div className="flex items-center justify-center">
         <Image
-          src="/images/LogoBarbearia.png" // Caminho para a imagem
-          alt="Logo da Barbearia" // Descrição alternativa
-          width={560} // Largura em pixels
-          height={560} // Altura em pixels
+          src="/images/Unisenai.png"
+          alt="Logo da Barbearia"
+          width={500}
+          height={500}
+          className="rounded-full"
         />
       </div>
 
@@ -93,7 +94,7 @@ export default function Login() {
       <div className="w-8"></div>
 
       {/* Formulário à direita */}
-      <div className="w-1/4 h-3/5 bg-[rgb(30,55,75)] bg-opacity-80 p-8 rounded-2xl">
+      <div className="max-w-md max-h-[490px] w-full bg-[rgb(29,29,28)] p-8 rounded-2xl shadow-lg">
         <h1 className="text-2xl font-bold text-center mt-5 mb-6 text-white">
           Login
         </h1>
@@ -116,12 +117,15 @@ export default function Login() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-md font-semibold mt-5">
+            <label
+              htmlFor="password"
+              className="block text-md font-semibold mt-5"
+            >
               Senha
             </label>
             <div className="relative mb-5">
               <input
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -144,18 +148,18 @@ export default function Login() {
           </div>
           <button
             type="submit"
-            className={`w-full bg-blue-900 text-white p-2 rounded font-semibold hover:bg-blue-800 ${loginLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+            className={`w-full bg-[#D2A348] text-white p-2 rounded font-semibold hover:bg-[#b38e3a] ${
+              loginLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             disabled={loginLoading}
           >
-            {loginLoading ? 'Entrando...' : 'Entrar'}
+            {loginLoading ? "Entrando..." : "Entrar"}
           </button>
         </form>
         {/* Exibindo o erro abaixo do formulário com transição de fade */}
         <div
           className={`bg-red-200 text-red-600 p-2 rounded mt-20 text-center transition-opacity duration-500 
-            ease-in-out ${errorVisible ? 'opacity-100' : 'opacity-0'
-            }`}
+            ease-in-out ${errorVisible ? "opacity-100" : "opacity-0"}`}
         >
           {error}
         </div>

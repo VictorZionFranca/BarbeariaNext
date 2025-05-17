@@ -1,5 +1,6 @@
 'use client';
 
+import ProtectedRoute from "../components/ProtectedRoute";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";  // Importa o roteador para redirecionamento
 import { signOut } from "firebase/auth";  // Importa a função de logout do Firebase
@@ -36,6 +37,7 @@ export default function Sidebar() {
   };
 
   return (
+    <ProtectedRoute>
     <aside
       className={`bg-white text-blue-900 h-full transition-all duration-300 shadow-md ${isOpen ? "w-64" : "w-16"
         } flex flex-col`}
@@ -104,5 +106,6 @@ export default function Sidebar() {
         </ul>
       </nav>
     </aside>
+    </ProtectedRoute>
   );
 }
