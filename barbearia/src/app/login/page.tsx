@@ -78,7 +78,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100 text-white bg-custom-gradient">
+    <div className="flex items-center justify-center h-screen bg-gray-100 text-white bg-custom-repeat bg-repeat">
       {/* Imagem à esquerda */}
       <div className="flex items-center justify-center">
         <Image

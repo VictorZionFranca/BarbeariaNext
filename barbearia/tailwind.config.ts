@@ -13,8 +13,7 @@ export default {
         foreground: "var(--foreground)",
       },
       backgroundImage: {
-        "custom-gradient":
-          "linear-gradient(90deg, rgba(20,20,20,1) 0%, rgba(60,60,60,1) 50%, rgba(20,20,20,1) 100%)",
+        "custom-repeat": "url('/images/fundo.png')",
       },
     },
   },
