@@ -39,14 +39,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (name) {
             setUserName(name);
           } else {
-            setAuthError("Falta de permissão para entrar no site!");
+            setAuthError("Conta não encontrada. Este sistema é exclusivo para administradores previamente registrados!");
             setUserName(null);
 
             // Espera 1 segundo, desloga e redireciona
             setTimeout(async () => {
               await signOut(auth);
               router.push("/login");
-            }, 1000);
+            }, 2500);
           }
         } catch (error) {
           console.error("Erro ao buscar nome de usuário:", error);

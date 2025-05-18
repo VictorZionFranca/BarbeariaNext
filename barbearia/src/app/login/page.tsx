@@ -78,9 +78,9 @@ export default function Login() {
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100 text-white bg-custom-repeat bg-repeat">
+    <div className="flex items-center justify-center h-screen bg-black text-white bg-custom-repeat bg-repeat bg-custom-small">
       {/* Imagem à esquerda */}
-      <div className="flex items-center justify-center">
+      <div className="flex items-center justify-center ">
         <Image
           src="/images/Unisenai.png"
           alt="Logo da Barbearia"

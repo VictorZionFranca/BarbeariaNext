@@ -15,6 +15,9 @@ export default {
       backgroundImage: {
         "custom-repeat": "url('/images/fundo.png')",
       },
+      backgroundSize: {
+        'custom-small': '400px 400px',
+      },
     },
   },
   plugins: [],
