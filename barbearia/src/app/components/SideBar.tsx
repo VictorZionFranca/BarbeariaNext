@@ -39,13 +39,13 @@ export default function Sidebar() {
   return (
     <ProtectedRoute>
     <aside
-      className={`bg-white text-blue-900 h-full transition-all duration-300 shadow-md ${isOpen ? "w-64" : "w-16"
+      className={`bg-gray-800 text-white h-full transition-all duration-300 shadow-md ${isOpen ? "w-64" : "w-16"
         } flex flex-col`}
     >
       {/* Botão para abrir/fechar o sidebar */}
       <button
         onClick={toggleSidebar}
-        className="py-3 px-5 focus:outline-none hover:bg-gray-200 rounded-lg mt-2 mb-1 text-2xl"
+        className="py-3 px-5 focus:outline-none hover:bg-gray-700 rounded-lg mt-2 mb-1 text-2xl"
       >
         {isOpen ? <BsList /> : <BsList />}
       </button>
@@ -65,8 +65,8 @@ export default function Sidebar() {
             <Link href={item.href} key={item.href}>
               <li
                 className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 ${pathname === item.href
-                  ? "bg-gray-300 text-blue-500"
-                  : "hover:bg-gray-200"
+                  ? "bg-gray-700 text-white"
+                  : "hover:bg-gray-700"
                   }`}
               >
                 {item.icon}
@@ -91,7 +91,7 @@ export default function Sidebar() {
         <ul className="mt-auto">
           <li
             onClick={handleLogout}  // Chama a função de logout ao clicar
-            className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-200  cursor-pointer`}
+            className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-700  cursor-pointer`}
           >
             <BsBoxArrowInLeft />
             <span

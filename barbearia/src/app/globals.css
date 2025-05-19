@@ -17,6 +17,15 @@ input:-webkit-autofill:focus {
   border: 1px solid #ccc !important; /* Garante que o autofill respeite o estilo do border */
 }
 
+.domingo-fechado {
+  background-color: #d8d8d8; /* cinza claro */
+  pointer-events: none; /* opcional: desabilita interação */
+}
+
+.dia-calendario {
+  cursor: pointer;
+}
+
 input:-webkit-autofill {
   background-color: #ffffff !important;
   -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;

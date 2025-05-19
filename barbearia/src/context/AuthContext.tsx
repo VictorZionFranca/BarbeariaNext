@@ -41,8 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           } else {
             setAuthError("Conta não encontrada. Este sistema é exclusivo para administradores previamente registrados!");
             setUserName(null);
-
-            // Espera 1 segundo, desloga e redireciona
+            
             setTimeout(async () => {
               await signOut(auth);
               router.push("/login");
