@@ -39,7 +39,7 @@ export default function Sidebar() {
   return (
     <ProtectedRoute>
     <aside
-      className={`bg-gray-800 text-white h-full transition-all duration-300 shadow-md ${isOpen ? "w-64" : "w-16"
+      className={`bg-[rgba(19,19,16,255)] text-white h-full transition-all duration-300 shadow-md ${isOpen ? "w-64" : "w-16"
         } flex flex-col`}
     >
       {/* Botão para abrir/fechar o sidebar */}

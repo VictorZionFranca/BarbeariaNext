@@ -7,7 +7,7 @@ export default function Header() {
 
   return (
     <ProtectedRoute>
-    <header className="flex justify-between items-center p-4 bg-gray-800 shadow">
+    <header className="flex justify-between items-center p-4 bg-[rgba(19,19,16,255)] shadow">
       <div className="flex-1 font-semibold text-2xl text-white">
         <Link href="/">Gestão Barbearia</Link>
       </div>

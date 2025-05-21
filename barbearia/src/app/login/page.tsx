@@ -94,7 +94,7 @@ export default function Login() {
       <div className="w-8"></div>
 
       {/* Formulário à direita */}
-      <div className="max-w-md max-h-[490px] w-full bg-[rgb(29,29,28)] p-8 rounded-2xl shadow-lg">
+      <div className="max-w-md max-h-[490px] w-full bg-[rgba(19,19,16,255)] p-8 rounded-2xl shadow-lg">
         <h1 className="text-2xl font-bold text-center mt-5 mb-6 text-white">
           Login
         </h1>
