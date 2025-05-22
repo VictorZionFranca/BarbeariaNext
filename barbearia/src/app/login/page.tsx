@@ -8,9 +8,11 @@ import { auth } from "../../lib/firebaseConfig";
 import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 import "../globals.css";
 import Image from "next/image";
+import { fetchUserNameByUid } from "../utils/firestoreUtils";
+import { signOut } from "firebase/auth";
 
 export default function Login() {
-  const { user, loading } = useAuth(); // Adiciona loading para tratar o estado inicial
+  const { user, loading, userName } = useAuth(); // Adicione userName aqui
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -21,11 +23,20 @@ export default function Login() {
   const [errorVisible, setErrorVisible] = useState(false); // Controla a visibilidade da mensagem de erro
 
   useEffect(() => {
-    if (!loading && user) {
-      // Redireciona para o dashboard se o usuário já estiver autenticado
+    // Só redireciona se estiver autenticado E for admin (userName existe)
+    if (!loading && user && userName) {
       router.replace("/");
     }
-  }, [user, loading, router]);
+  }, [user, userName, loading, router]);
+
+  // Recupera erro do localStorage ao carregar a página
+  useEffect(() => {
+    const loginError = localStorage.getItem("loginError");
+    if (loginError) {
+      setError(loginError);
+      localStorage.removeItem("loginError");
+    }
+  }, []);
 
   useEffect(() => {
     // Se houver um erro, faz a mensagem aparecer e depois desaparecer após 3 segundos
@@ -46,12 +57,22 @@ export default function Login() {
     setLoginLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Verifica se o usuário está na coleção admin
+      const userName = await fetchUserNameByUid(user.uid);
+      if (!userName) {
+        localStorage.setItem("loginError", "Acesso negado! Este sistema é exclusivo para administradores previamente registrados.");
+        await signOut(auth);
+        setLoginLoading(false);
+        return;
+      }
+
       router.replace("/"); // Redireciona para o dashboard após o login bem-sucedido
     } catch (err) {
       const firebaseError = err as { code: string };
-      console.error("Erro no login:", firebaseError);
-
+      
       // Tratamento de erros do Firebase
       switch (firebaseError.code) {
         case "auth/user-not-found":
@@ -148,9 +169,8 @@ export default function Login() {
           </div>
           <button
             type="submit"
-            className={`w-full bg-[#D2A348] text-white p-2 rounded font-semibold hover:bg-[#b38e3a] ${
-              loginLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className={`w-full bg-[#D2A348] text-white p-2 rounded font-semibold hover:bg-[#b38e3a] ${loginLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             disabled={loginLoading}
           >
             {loginLoading ? "Entrando..." : "Entrar"}
@@ -159,7 +179,7 @@ export default function Login() {
         {/* Exibindo o erro abaixo do formulário com transição de fade */}
         <div
           className={`bg-red-200 text-red-600 p-2 rounded mt-20 text-center transition-opacity duration-500 
-            ease-in-out ${errorVisible ? "opacity-100" : "opacity-0"}`}
+    ease-in-out ${errorVisible ? "opacity-100" : "opacity-0"}`}
         >
           {error}
         </div>

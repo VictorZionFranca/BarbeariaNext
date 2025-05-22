@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth } from "../lib/firebaseConfig";
 import { fetchUserNameByUid } from "../app/utils/firestoreUtils";
@@ -39,13 +39,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (name) {
             setUserName(name);
           } else {
-            setAuthError("Conta não encontrada. Este sistema é exclusivo para administradores previamente registrados!");
+            setAuthError(null); // Não mostra erro aqui, pois será tratado na tela de login
             setUserName(null);
-            
-            setTimeout(async () => {
-              await signOut(auth);
-              router.push("/login");
-            }, 2500);
+            // Remova o signOut e o router.push("/login")
           }
         } catch (error) {
           console.error("Erro ao buscar nome de usuário:", error);
