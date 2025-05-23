@@ -102,9 +102,9 @@ export default function ServicosManager() {
 
     return (
         <div>
-            <div className="flex mb-4 items-center gap-[750px]">
-                <div className="flex items-center gap-2 flex-1">
-                    <div className="relative w-full">
+            <div className="flex mb-4 items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="relative w-[400px]">
                         <input
                             type="text"
                             placeholder="Buscar serviço..."
@@ -125,7 +125,7 @@ export default function ServicosManager() {
                     </div>
                 </div>
                 <button
-                    className="bg-green-600 text-white px-4 py-2 rounded min-w-[180px] transition-colors duration-200 hover:bg-green-700"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg min-w-[180px] transition-colors duration-200 hover:bg-green-700"
                     onClick={() => {
                         setModalCadastro(true);
                         setEditId(null);
@@ -224,32 +224,68 @@ export default function ServicosManager() {
                             }}
                             className="flex flex-col gap-4"
                         >
-                            <input
-                                name="nomeDoServico"
-                                placeholder="Nome do serviço"
-                                value={form.nomeDoServico}
-                                onChange={handleChange}
-                                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
-                                required
-                            />
-                            <input
-                                name="valor"
-                                placeholder="Valor"
-                                type="number"
-                                value={form.valor}
-                                onChange={handleChange}
-                                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
-                                required
-                            />
-                            <input
-                                name="duracaoEmMinutos"
-                                placeholder="Duração (min)"
-                                type="number"
-                                value={form.duracaoEmMinutos}
-                                onChange={handleChange}
-                                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    name="nomeDoServico"
+                                    id="nomeDoServico"
+                                    placeholder=" "
+                                    value={form.nomeDoServico}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
+                                    required
+                                />
+                                <label
+                                    htmlFor="nomeDoServico"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Nome do serviço
+                                </label>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    name="valor"
+                                    id="valor"
+                                    placeholder=" "
+                                    type="number"
+                                    value={form.valor}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
+                                    required
+                                />
+                                <label
+                                    htmlFor="valor"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Valor
+                                </label>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    name="duracaoEmMinutos"
+                                    id="duracaoEmMinutos"
+                                    placeholder=" "
+                                    type="number"
+                                    value={form.duracaoEmMinutos}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
+                                    required
+                                />
+                                <label
+                                    htmlFor="duracaoEmMinutos"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Duração (min)
+                                </label>
+                            </div>
                             {erro && <span className="text-red-500 text-center">{erro}</span>}
                             <div className="flex gap-4 mt-4 justify-center">
                                 <button
@@ -311,32 +347,68 @@ export default function ServicosManager() {
                             }}
                             className="flex flex-col gap-4"
                         >
-                            <input
-                                name="nomeDoServico"
-                                placeholder="Nome do serviço"
-                                value={form.nomeDoServico}
-                                onChange={handleChange}
-                                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 text-black"
-                                required
-                            />
-                            <input
-                                name="valor"
-                                placeholder="Valor"
-                                type="number"
-                                value={form.valor}
-                                onChange={handleChange}
-                                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 text-black"
-                                required
-                            />
-                            <input
-                                name="duracaoEmMinutos"
-                                placeholder="Duração (min)"
-                                type="number"
-                                value={form.duracaoEmMinutos}
-                                onChange={handleChange}
-                                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-700 text-black"
-                                required
-                            />
+                            <div className="relative">
+                                <input
+                                    name="nomeDoServico"
+                                    id="nomeDoServico"
+                                    placeholder=" "
+                                    value={form.nomeDoServico}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
+                                    required
+                                />
+                                <label
+                                    htmlFor="nomeDoServico"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Nome do serviço
+                                </label>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    name="valor"
+                                    id="valor"
+                                    placeholder=" "
+                                    type="number"
+                                    value={form.valor}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
+                                    required
+                                />
+                                <label
+                                    htmlFor="valor"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Valor
+                                </label>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    name="duracaoEmMinutos"
+                                    id="duracaoEmMinutos"
+                                    placeholder=" "
+                                    type="number"
+                                    value={form.duracaoEmMinutos}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
+                                    required
+                                />
+                                <label
+                                    htmlFor="duracaoEmMinutos"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Duração (min)
+                                </label>
+                            </div>
                             {erro && <span className="text-red-500 text-center">{erro}</span>}
                             <div className="flex gap-4 mt-4 justify-center">
                                 <button
