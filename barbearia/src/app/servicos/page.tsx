@@ -1,12 +1,11 @@
 import ProtectedRoute from "../components/ProtectedRoute";
+import ServicosManager from "../components/ServicosManager";
 
 export default function ServicosPage() {
   return (
     <ProtectedRoute>
-      <div className="text-black">
-        <h1 className="text-2xl font-bold mb-4">Serviços</h1>
-        <p>Gerencie os serviços disponíveis na barbearia.</p>
-      </div>
+      <p className="text-black text-2xl font-bold mb-5">Serviços</p>
+      <ServicosManager />
     </ProtectedRoute>
   );
 }
