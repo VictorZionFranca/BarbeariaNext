@@ -224,7 +224,7 @@ export default function ServicosManager() {
                     <div
                         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
                             transform transition-all duration-300
-                            ${modalAnimando === "excluir" ? "opacity-0 -translate-y-20 scale-95" : "opacity-100 translate-y-0 scale-100"}
+                            ${modalAnimando === "excluir" ? "opacity-0 -translate-y-80 scale-95" : "opacity-100 translate-y-0 scale-100"}
                         `}
                     >
                         <button
@@ -259,7 +259,7 @@ export default function ServicosManager() {
                     <div
                         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
                             transform transition-all duration-300
-                            ${modalAnimando === "cadastro" ? "opacity-0 -translate-y-20 scale-95" : "opacity-100 translate-y-0 scale-100"}
+                            ${modalAnimando === "cadastro" ? "opacity-0 -translate-y-80 scale-95" : "opacity-100 translate-y-0 scale-100"}
                         `}
                     >
                         <button
@@ -365,7 +365,7 @@ export default function ServicosManager() {
                     <div
                         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
                             transform transition-all duration-300
-                            ${modalAnimando === "editar" ? "opacity-0 -translate-y-20 scale-95" : "opacity-100 translate-y-0 scale-100"}
+                            ${modalAnimando === "editar" ? "opacity-0 -translate-y-80 scale-95" : "opacity-100 translate-y-0 scale-100"}
                         `}
                     >
                         <button

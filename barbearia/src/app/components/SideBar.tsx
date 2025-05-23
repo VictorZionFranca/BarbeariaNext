@@ -1,10 +1,10 @@
 "use client";
 
 import ProtectedRoute from "../components/ProtectedRoute";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // Importa o roteador para redirecionamento
-import { signOut } from "firebase/auth"; // Importa a função de logout do Firebase
-import { auth } from "../../lib/firebaseConfig"; // Importa a configuração do Firebase
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation"; 
+import { signOut } from "firebase/auth"; 
+import { auth } from "../../lib/firebaseConfig"; 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,7 +22,7 @@ import {
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter(); // Instancia o roteador para redirecionar após o logout
+  const router = useRouter(); 
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -43,40 +43,27 @@ export default function Sidebar() {
     }
   };
 
-  const menuItems = [
-    { href: "/", icon: <BsFillGridFill />, label: "Dashboard" },
-    { href: "/agendamentos", icon: <BsCalendarCheck />, label: "Agendamentos" },
-    { href: "/clientes", icon: <BsFillPersonFill />, label: "Clientes" },
-    { href: "/colaboradores", icon: <BsFilePerson />, label: "Colaboradores" },
-    { href: "/servicos", icon: <BsScissors />, label: "Serviços" },
-    { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
-    { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
-  ];
+  const menuItems = useMemo(
+    () => [
+      { href: "/", icon: <BsFillGridFill />, label: "Dashboard" },
+      { href: "/agendamentos", icon: <BsCalendarCheck />, label: "Agendamentos" },
+      { href: "/clientes", icon: <BsFillPersonFill />, label: "Clientes" },
+      { href: "/colaboradores", icon: <BsFilePerson />, label: "Colaboradores" },
+      { href: "/servicos", icon: <BsScissors />, label: "Serviços" },
+      { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
+      { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
+    ],
+    []
+  );
 
   const [highlightIndex, setHighlightIndex] = useState(
     menuItems.findIndex((item) => item.href === pathname)
   );
 
   useEffect(() => {
-  const idx = menuItems.findIndex((item) => item.href === pathname);
-  setHighlightIndex(idx);
-}, [pathname]);
-
-  const [animating, setAnimating] = useState(false);
-
-  const animateHighlight = (targetIndex: number) => {
-    setAnimating(true);
-    let current = highlightIndex;
-    const step = targetIndex > current ? 1 : -1;
-    const interval = setInterval(() => {
-      current += step;
-      setHighlightIndex(current);
-      if (current === targetIndex) {
-        clearInterval(interval);
-        setAnimating(false);
-      }
-    }, 120); // velocidade da animação (ms)
-  };
+    const idx = menuItems.findIndex((item) => item.href === pathname);
+    setHighlightIndex(idx);
+  }, [pathname, menuItems]);
 
   return (
     <ProtectedRoute>
@@ -97,20 +84,7 @@ export default function Sidebar() {
         <nav className="flex flex-col flex-grow">
           <ul>
             {menuItems.map((item, index) => (
-              <Link
-                href={item.href}
-                key={item.href}
-                onClick={(e) => {
-                  if (highlightIndex !== index && !animating) {
-                    e.preventDefault();
-                    animateHighlight(index);
-                    setTimeout(
-                      () => router.push(item.href),
-                      Math.abs(index - highlightIndex) * 60 + 320
-                    );
-                  }
-                }}
-              >
+              <Link href={item.href} key={item.href}>
                 <li
                   className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300
                   ${highlightIndex === index ? "bg-[#D2A348] text-white" : "hover:bg-gray-700"}`}
