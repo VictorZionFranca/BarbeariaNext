@@ -27,6 +27,7 @@ export default function ServicosManager() {
     const [modalExcluir, setModalExcluir] = useState<{ aberto: boolean; id: string | null }>({ aberto: false, id: null });
     const [modalCadastro, setModalCadastro] = useState(false);
     const [modalEditar, setModalEditar] = useState(false);
+    const [modalAnimando, setModalAnimando] = useState<"cadastro" | "editar" | "excluir" | null>(null);
 
     const carregarServicos = useCallback(async () => {
         type ServicoFirestore = { id: string; nomeDoServico?: string; valor?: number; duracaoEmMinutos?: number };
@@ -82,10 +83,14 @@ export default function ServicosManager() {
         });
         setEditId(servico.id);
         setModalEditar(true);
+        setModalAnimando("editar");
+        setTimeout(() => setModalAnimando(null), 100);
     }
 
     function handleExcluir(id: string) {
         setModalExcluir({ aberto: true, id });
+        setModalAnimando("excluir");
+        setTimeout(() => setModalAnimando(null), 100);
     }
 
     async function confirmarExcluir() {
@@ -100,10 +105,36 @@ export default function ServicosManager() {
         s.nomeDoServico.toLowerCase().includes(busca.toLowerCase())
     );
 
+    // Funções para fechar modais com animação
+    function fecharModalCadastroAnimado() {
+        setModalAnimando("cadastro");
+        setTimeout(() => {
+            setModalCadastro(false);
+            setModalAnimando(null);
+            setForm(camposIniciais);
+            setErro("");
+        }, 300);
+    }
+    function fecharModalEditarAnimado() {
+        setModalAnimando("editar");
+        setTimeout(() => {
+            setModalEditar(false);
+            setModalAnimando(null);
+            setForm(camposIniciais);
+            setEditId(null);
+            setErro("");
+        }, 300);
+    }
+    function fecharModalExcluirAnimado() {
+        setModalAnimando("excluir");
+        setTimeout(() => {
+            setModalExcluir({ aberto: false, id: null });
+            setModalAnimando(null);
+        }, 300);
+    }
+
     return (
-        
-        <div className="flex flex-col min-h-[78vh]"> 
-        {/* O min-h-[78vh] pode ser usado nas outras páginas para espaçamento do footer! */}
+        <div className="flex flex-col min-h-[78vh]">
             <div className="flex mb-4 items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="relative w-[400px]">
@@ -132,53 +163,73 @@ export default function ServicosManager() {
                         setModalCadastro(true);
                         setEditId(null);
                         setForm(camposIniciais);
+                        setModalAnimando("cadastro");
+                        setTimeout(() => setModalAnimando(null), 100); // igual ao duration-300
                     }}
                 >
                     Cadastrar Serviço
                 </button>
             </div>
-            <table className="w-full bg-white text-black rounded shadow">
+            <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
                 <thead>
-                    <tr>
-                        <th className="p-2 text-left">Nome</th>
-                        <th className="p-2 text-left">Valor</th>
-                        <th className="p-2 text-left">Duração (min)</th>
-                        <th className="p-2 text-left">Ações</th>
+                    <tr className="bg-gray-100 border-b border-gray-200">
+                        <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Valor</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Duração (min)</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {servicosFiltrados.map((s) => (
-                        <tr key={s.id}>
-                            <td className="p-2">{s.nomeDoServico}</td>
-                            <td className="p-2">R$ {Number(s.valor).toFixed(2)}</td>
-                            <td className="p-2">{s.duracaoEmMinutos}</td>
-                            <td className="p-2 flex gap-2">
-                                <button
-                                    onClick={() => handleEditar(s)}
-                                    className="bg-blue-500 text-white px-4 py-2 rounded flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
-                                    title="Editar"
-                                >
-                                    <FaPencilAlt className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={() => handleExcluir(s.id)}
-                                    className="bg-red-600 text-white px-4 py-2 rounded flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
-                                    title="Excluir"
-                                >
-                                    <FaTrash className="h-4 w-4" />
-                                </button>
+                    {servicosFiltrados.length === 0 ? (
+                        <tr>
+                            <td colSpan={4} className="p-6 text-center text-gray-500">
+                                Nenhum serviço encontrado.
                             </td>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    ) : (
+                        servicosFiltrados.map((s) => (
+                            <tr
+                                key={s.id}
+                                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                            >
+                                <td className="p-4 align-middle">{s.nomeDoServico}</td>
+                                <td className="p-4 align-middle">R$ {Number(s.valor).toFixed(2)}</td>
+                                <td className="p-4 align-middle">{s.duracaoEmMinutos}</td>
+                                <td className="p-4 align-middle">
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleEditar(s)}
+                                            className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
+                                            title="Editar"
+                            >
+                                <FaPencilAlt className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={() => handleExcluir(s.id)}
+                                className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
+                                title="Excluir"
+                            >
+                                <FaTrash className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            ))
+        )}
+    </tbody>
+</table>
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80">
-                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative">
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+                    <div
+                        className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
+                            transform transition-all duration-300
+                            ${modalAnimando === "excluir" ? "opacity-0 -translate-y-10 scale-95" : "opacity-100 translate-y-0 scale-100"}
+                        `}
+                    >
                         <button
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-                            onClick={() => setModalExcluir({ aberto: false, id: null })}
+                            onClick={fecharModalExcluirAnimado}
                             aria-label="Fechar"
                             type="button"
                         >
@@ -194,7 +245,7 @@ export default function ServicosManager() {
                                 Excluir
                             </button>
                             <button
-                                onClick={() => setModalExcluir({ aberto: false, id: null })}
+                                onClick={fecharModalExcluirAnimado}
                                 className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
                             >
                                 Cancelar
@@ -204,15 +255,16 @@ export default function ServicosManager() {
                 </div>
             )}
             {modalCadastro && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80">
-                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative">
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+                    <div
+                        className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
+                            transform transition-all duration-300
+                            ${modalAnimando === "cadastro" ? "opacity-0 -translate-y-10 scale-95" : "opacity-100 translate-y-0 scale-100"}
+                        `}
+                    >
                         <button
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-                            onClick={() => {
-                                setModalCadastro(false);
-                                setForm(camposIniciais);
-                                setErro("");
-                            }}
+                            onClick={fecharModalCadastroAnimado}
                             aria-label="Fechar"
                             type="button"
                         >
@@ -299,11 +351,7 @@ export default function ServicosManager() {
                                 <button
                                     type="button"
                                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
-                                    onClick={() => {
-                                        setModalCadastro(false);
-                                        setForm(camposIniciais);
-                                        setErro("");
-                                    }}
+                                    onClick={fecharModalCadastroAnimado}
                                 >
                                     Cancelar
                                 </button>
@@ -313,16 +361,16 @@ export default function ServicosManager() {
                 </div>
             )}
             {modalEditar && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80">
-                    <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative">
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+                    <div
+                        className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
+                            transform transition-all duration-300
+                            ${modalAnimando === "editar" ? "opacity-0 -translate-y-10 scale-95" : "opacity-100 translate-y-0 scale-100"}
+                        `}
+                    >
                         <button
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-                            onClick={() => {
-                                setModalEditar(false);
-                                setForm(camposIniciais);
-                                setEditId(null);
-                                setErro("");
-                            }}
+                            onClick={fecharModalEditarAnimado}
                             aria-label="Fechar"
                             type="button"
                         >
@@ -422,12 +470,7 @@ export default function ServicosManager() {
                                 <button
                                     type="button"
                                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
-                                    onClick={() => {
-                                        setModalEditar(false);
-                                        setForm(camposIniciais);
-                                        setEditId(null);
-                                        setErro("");
-                                    }}
+                                    onClick={fecharModalEditarAnimado}
                                 >
                                     Cancelar
                                 </button>
