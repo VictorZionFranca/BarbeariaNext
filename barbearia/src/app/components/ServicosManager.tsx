@@ -101,7 +101,9 @@ export default function ServicosManager() {
     );
 
     return (
-        <div>
+        
+        <div className="flex flex-col min-h-[78vh]"> 
+        {/* O min-h-[78vh] pode ser usado nas outras páginas para espaçamento do footer! */}
             <div className="flex mb-4 items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="relative w-[400px]">
@@ -135,7 +137,7 @@ export default function ServicosManager() {
                     Cadastrar Serviço
                 </button>
             </div>
-            <table className="w-full bg-white text-black rounded shadow mb-[150]">
+            <table className="w-full bg-white text-black rounded shadow">
                 <thead>
                     <tr>
                         <th className="p-2 text-left">Nome</th>
