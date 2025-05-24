@@ -17,6 +17,7 @@ import {
   BsCashCoin,
   BsBoxArrowInLeft,
   BsList,
+  BsBuilding
 } from "react-icons/bs";
 
 export default function Sidebar() {
@@ -50,6 +51,7 @@ export default function Sidebar() {
       { href: "/clientes", icon: <BsFillPersonFill />, label: "Clientes" },
       { href: "/colaboradores", icon: <BsFilePerson />, label: "Colaboradores" },
       { href: "/servicos", icon: <BsScissors />, label: "Serviços" },
+      { href: "/unidades", icon: <BsBuilding />, label: "Unidades" },
       { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
       { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
     ],
