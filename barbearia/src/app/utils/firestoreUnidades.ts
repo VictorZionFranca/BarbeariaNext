@@ -1,6 +1,6 @@
 import { db } from '../../lib/firebaseConfig';
 import { collection, updateDoc, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
-import { Unidade } from '../../types';
+import { Unidade } from '../../types/index';
 
 const unidadesCollection = collection(db, 'unidades');
 
