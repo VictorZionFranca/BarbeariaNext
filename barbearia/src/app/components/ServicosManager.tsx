@@ -1,7 +1,6 @@
 "use client";
 import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
-import {
-    listarServicos, criarServicoComIdIncremental, atualizarServico, deletarServico} from "../utils/firestoreServicos";
+import { listarServicos, criarServicoComIdIncremental, atualizarServico, deletarServico} from "../utils/firestoreServicos";
 import { Timestamp } from "firebase/firestore";
 import { FaPencilAlt, FaTrash } from "react-icons/fa";
 
