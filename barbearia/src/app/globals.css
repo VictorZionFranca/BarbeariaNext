@@ -26,6 +26,21 @@ input:-webkit-autofill:focus {
   cursor: pointer;
 }
 
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(120%);}
+  to { opacity: 1; transform: translateX(0);}
+}
+@keyframes slide-out-right {
+  from { opacity: 1; transform: translateX(0);}
+  to { opacity: 0; transform: translateX(120%);}
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.5s cubic-bezier(.4,0,.2,1);
+}
+.animate-slide-out-right {
+  animation: slide-out-right 0.3s cubic-bezier(.4,0,.2,1);
+}
+
 input:-webkit-autofill {
   background-color: #ffffff !important;
   -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;

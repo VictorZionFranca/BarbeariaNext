@@ -109,7 +109,8 @@ export default function UnidadesManager() {
     // Função para abrir modal de exclusão
     function handleExcluir(id: string) {
         setModalExcluir({ aberto: true, id });
-        setModalAnimando(null);
+        setModalAnimando("excluir");
+        setTimeout(() => setModalAnimando(null), 100);
     }
 
     // Função para confirmar exclusão

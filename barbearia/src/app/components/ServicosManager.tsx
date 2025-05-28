@@ -1,10 +1,10 @@
 "use client";
 import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
-import { listarServicos, criarServicoComIdIncremental, atualizarServico, deletarServico} from "../utils/firestoreServicos";
+import { listarServicos, criarServicoComIdIncremental, atualizarServico, deletarServico } from "../utils/firestoreServicos";
 import { Timestamp } from "firebase/firestore";
-import { FaPencilAlt, FaTrash } from "react-icons/fa";
+import { FaPencilAlt, FaTrash, FaCheck } from "react-icons/fa";
 
-const camposIniciais = { nomeDoServico: "", valor: "", duracaoEmMinutos: "" };
+const camposIniciais = { nomeDoServico: "", valor: "", duracaoEmMinutos: "", descricao: "" };
 
 export default function ServicosManager() {
     type Servico = {
@@ -12,26 +12,30 @@ export default function ServicosManager() {
         nomeDoServico: string;
         valor: number;
         duracaoEmMinutos: number;
+        descricao?: string;
     };
 
     const [servicos, setServicos] = useState<Servico[]>([]);
     const [busca, setBusca] = useState("");
-    const [form, setForm] = useState(camposIniciais);
+    const [form, setForm] = useState<{ nomeDoServico: string; valor: string; duracaoEmMinutos: string; descricao: string }>(camposIniciais);
     const [editId, setEditId] = useState<string | null>(null);
     const [erro, setErro] = useState("");
     const [modalExcluir, setModalExcluir] = useState<{ aberto: boolean; id: string | null }>({ aberto: false, id: null });
     const [modalCadastro, setModalCadastro] = useState(false);
     const [modalEditar, setModalEditar] = useState(false);
     const [modalAnimando, setModalAnimando] = useState<"cadastro" | "editar" | "excluir" | null>(null);
+    const [notificacao, setNotificacao] = useState<{ mensagem: string; tipo: "sucesso" | "erro" } | null>(null);
+    const [notificacaoVisivel, setNotificacaoVisivel] = useState(false);
 
     const carregarServicos = useCallback(async () => {
-        type ServicoFirestore = { id: string; nomeDoServico?: string; valor?: number; duracaoEmMinutos?: number };
+        type ServicoFirestore = { id: string; nomeDoServico?: string; valor?: number; duracaoEmMinutos?: number; descricao?: string };
         const lista = await listarServicos() as ServicoFirestore[];
         const listaCompletada = lista.map((item) => ({
             id: item.id,
             nomeDoServico: item.nomeDoServico ?? "",
             valor: item.valor ?? 0,
             duracaoEmMinutos: item.duracaoEmMinutos ?? 0,
+            descricao: item.descricao ?? "",
         }));
         setServicos(listaCompletada);
     }, []);
@@ -40,7 +44,7 @@ export default function ServicosManager() {
         carregarServicos();
     }, [busca, carregarServicos]);
 
-    function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    function handleChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
         setForm({ ...form, [e.target.name]: e.target.value });
     }
 
@@ -55,14 +59,18 @@ export default function ServicosManager() {
                 nomeDoServico: form.nomeDoServico,
                 valor: Number(form.valor),
                 duracaoEmMinutos: Number(form.duracaoEmMinutos),
+                descricao: form.descricao,
             });
+            mostrarNotificacao("Serviço editado com sucesso!", "sucesso");
         } else {
             await criarServicoComIdIncremental({
                 nomeDoServico: form.nomeDoServico,
                 valor: Number(form.valor),
                 duracaoEmMinutos: Number(form.duracaoEmMinutos),
+                descricao: form.descricao,
                 criadoEm: Timestamp.now(),
             });
+            mostrarNotificacao("Serviço cadastrado com sucesso!", "sucesso");
         }
         setForm(camposIniciais);
         setEditId(null);
@@ -75,6 +83,7 @@ export default function ServicosManager() {
             nomeDoServico: servico.nomeDoServico,
             valor: servico.valor.toString(),
             duracaoEmMinutos: servico.duracaoEmMinutos.toString(),
+            descricao: servico.descricao ?? "",
         });
         setEditId(servico.id);
         setModalEditar(true);
@@ -91,9 +100,17 @@ export default function ServicosManager() {
     async function confirmarExcluir() {
         if (modalExcluir.id) {
             await deletarServico(modalExcluir.id);
+            mostrarNotificacao("Serviço excluído!", "erro");
             setModalExcluir({ aberto: false, id: null });
             carregarServicos();
         }
+    }
+
+    function mostrarNotificacao(mensagem: string, tipo: "sucesso" | "erro" = "sucesso") {
+        setNotificacao({ mensagem, tipo });
+        setNotificacaoVisivel(true);
+        setTimeout(() => setNotificacaoVisivel(false), 2700); // inicia saída antes de sumir
+        setTimeout(() => setNotificacao(null), 3000); // remove do DOM após animação
     }
 
     const servicosFiltrados = servicos.filter(s =>
@@ -171,13 +188,14 @@ export default function ServicosManager() {
                         <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
                         <th className="p-4 text-left font-semibold text-gray-700">Valor</th>
                         <th className="p-4 text-left font-semibold text-gray-700">Duração (min)</th>
+                        <th className="p-4 text-left font-semibold text-gray-700">Descrição</th>
                         <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {servicosFiltrados.length === 0 ? (
                         <tr>
-                            <td colSpan={4} className="p-6 text-center text-gray-500">
+                            <td colSpan={5} className="p-6 text-center text-gray-500">
                                 Nenhum serviço encontrado.
                             </td>
                         </tr>
@@ -188,31 +206,38 @@ export default function ServicosManager() {
                                 className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                             >
                                 <td className="p-4 align-middle">{s.nomeDoServico}</td>
-                                <td className="p-4 align-middle">R$ {Number(s.valor).toFixed(2)}</td>
-                                <td className="p-4 align-middle">{s.duracaoEmMinutos}</td>
+                                <td className="p-4 align-middle">
+                                    R$ {Number(s.valor).toFixed(2).replace('.', ',')}
+                                </td>
+                                <td className="p-4 align-middle">
+                                    {s.duracaoEmMinutos}:00
+                                </td>
+                                <td className="p-4 align-middle">
+                                    {s.descricao ? (s.descricao.length > 40 ? s.descricao.slice(0, 40) + "..." : s.descricao) : ""}
+                                </td>
                                 <td className="p-4 align-middle">
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => handleEditar(s)}
                                             className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
                                             title="Editar"
-                            >
-                                <FaPencilAlt className="h-4 w-4" />
-                            </button>
-                            <button
-                                onClick={() => handleExcluir(s.id)}
-                                className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
-                                title="Excluir"
-                            >
-                                <FaTrash className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            ))
-        )}
-    </tbody>
-</table>
+                                        >
+                                            <FaPencilAlt className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleExcluir(s.id)}
+                                            className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
+                                            title="Excluir"
+                                        >
+                                            <FaTrash className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+            </table>
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
@@ -230,7 +255,7 @@ export default function ServicosManager() {
                         >
                             ×
                         </button>
-                        <h2 className="text-2xl font-bold mb-6 text-center text-black">Excluir Serviço</h2>
+                        <h2 className="text-2xl font-bold mb-6 text-center text-red-700">Excluir Serviço</h2>
                         <p className="text-center text-black mb-8">Tem certeza que deseja excluir este serviço?</p>
                         <div className="flex gap-4 justify-center">
                             <button
@@ -335,6 +360,27 @@ export default function ServicosManager() {
                                     Duração (min)
                                 </label>
                             </div>
+                            <div className="relative">
+                                <textarea
+                                    name="descricao"
+                                    id="descricao"
+                                    placeholder=" "
+                                    value={form.descricao}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full resize-none"
+                                    maxLength={200}
+                                    rows={3}
+                                />
+                                <label
+                                    htmlFor="descricao"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Descrição
+                                </label>
+                            </div>
                             {erro && <span className="text-red-500 text-center">{erro}</span>}
                             <div className="flex gap-4 mt-4 justify-center">
                                 <button
@@ -383,6 +429,7 @@ export default function ServicosManager() {
                                     nomeDoServico: form.nomeDoServico,
                                     valor: Number(form.valor),
                                     duracaoEmMinutos: Number(form.duracaoEmMinutos),
+                                    descricao: form.descricao,
                                 });
                                 setForm(camposIniciais);
                                 setEditId(null);
@@ -454,6 +501,27 @@ export default function ServicosManager() {
                                     Duração (min)
                                 </label>
                             </div>
+                            <div className="relative">
+                                <textarea
+                                    name="descricao"
+                                    id="descricao"
+                                    placeholder=" "
+                                    value={form.descricao}
+                                    onChange={handleChange}
+                                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full resize-none"
+                                    maxLength={200}
+                                    rows={3}
+                                />
+                                <label
+                                    htmlFor="descricao"
+                                    className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                                        peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                                        peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                                        peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                                >
+                                    Descrição
+                                </label>
+                            </div>
                             {erro && <span className="text-red-500 text-center">{erro}</span>}
                             <div className="flex gap-4 mt-4 justify-center">
                                 <button
@@ -472,6 +540,28 @@ export default function ServicosManager() {
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+            {notificacao && (
+                <div
+                    className={`
+      fixed bottom-6 right-6 z-[9999]
+      px-6 py-4 rounded-lg shadow-lg
+      text-white text-base font-semibold
+      flex items-center gap-2
+      transition-all duration-500
+      ${notificacao.tipo === "sucesso" ? "bg-green-600" : "bg-red-600"}
+      ${notificacaoVisivel ? "animate-slide-in-right" : "animate-slide-out-right"}
+    `}
+                    style={{ minWidth: 220 }}
+                >
+                    {notificacao.tipo === "erro" && (
+                        <FaTrash className="inline-block mr-2 text-white" />
+                    )}
+                    {notificacao.tipo === "sucesso" && (
+                        <FaCheck className="inline-block mr-2 text-white" />
+                    )}
+                    {notificacao.mensagem}
                 </div>
             )}
         </div>

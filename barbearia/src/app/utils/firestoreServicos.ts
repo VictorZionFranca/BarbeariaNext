@@ -18,6 +18,7 @@ export type Servico = {
   nomeDoServico: string;
   valor: number;
   duracaoEmMinutos: number;
+  descricao?: string;
   criadoEm?: Timestamp;
 };
 
