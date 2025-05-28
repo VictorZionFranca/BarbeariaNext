@@ -1,16 +1,27 @@
 import { db } from '../../lib/firebaseConfig';
 import { collection, updateDoc, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
-import { Unidade } from '../../types/index';
+
+export interface Unidade {
+    id?: string;
+    nome: string;
+    rua: string;
+    numero: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    pais: string;
+    telefone: string;
+    cep?: string;
+}
 
 const unidadesCollection = collection(db, 'unidades');
 
-export const listarUnidades = async () => {
+export const listarUnidades = async (): Promise<Unidade[]> => {
     const snapshot = await getDocs(unidadesCollection);
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Unidade[];
 };
 
 export async function criarUnidade(unidade: Unidade) {
-    // Busca todos os documentos para encontrar o maior número de filial
     const snapshot = await getDocs(unidadesCollection);
     let maior = 0;
     snapshot.forEach(doc => {
@@ -21,7 +32,6 @@ export async function criarUnidade(unidade: Unidade) {
         }
     });
     const novoId = `filial${maior + 1}`;
-    // Remove o campo id antes de salvar
     const unidadeSemId = Object.fromEntries(
         Object.entries(unidade).filter(([key]) => key !== 'id')
     );
