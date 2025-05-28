@@ -1,11 +1,6 @@
 "use client";
 import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
-import {
-    listarUnidades,
-    criarUnidade,
-    atualizarUnidade,
-    deletarUnidade,
-} from "../utils/firestoreUnidades";
+import { listarUnidades, criarUnidade, atualizarUnidade, deletarUnidade } from "../utils/firestoreUnidades";
 import { FaPencilAlt, FaTrash } from "react-icons/fa";
 import { createPortal } from "react-dom";
 
