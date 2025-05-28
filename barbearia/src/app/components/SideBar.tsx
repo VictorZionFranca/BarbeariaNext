@@ -57,7 +57,7 @@ export default function Sidebar() {
     ],
     []
   );
-
+  // altera o estado do highlightIndex com base na rota atual
   const [highlightIndex, setHighlightIndex] = useState(
     menuItems.findIndex((item) => item.href === pathname)
   );
