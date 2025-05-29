@@ -46,6 +46,7 @@ export default function ServicosManager() {
 
     function handleChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
         setForm({ ...form, [e.target.name]: e.target.value });
+        setErro(""); // limpa o erro ao digitar
     }
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -54,6 +55,18 @@ export default function ServicosManager() {
             setErro("Preencha todos os campos obrigatórios.");
             return;
         }
+
+        // Validação: não permitir nomes duplicados ao cadastrar ou editar
+        const nomeNormalizado = form.nomeDoServico.trim().toLowerCase();
+        const jaExiste = servicos.some(s =>
+            s.nomeDoServico.trim().toLowerCase() === nomeNormalizado &&
+            (!editId || s.id !== editId)
+        );
+        if (jaExiste) {
+            setErro("Já existe um serviço com esse nome.");
+            return;
+        }
+
         if (editId) {
             await atualizarServico(editId, {
                 nomeDoServico: form.nomeDoServico,
@@ -62,6 +75,7 @@ export default function ServicosManager() {
                 descricao: form.descricao,
             });
             mostrarNotificacao("Serviço editado com sucesso!", "sucesso");
+            fecharModalEditarAnimado();
         } else {
             await criarServicoComIdIncremental({
                 nomeDoServico: form.nomeDoServico,
@@ -71,6 +85,7 @@ export default function ServicosManager() {
                 criadoEm: Timestamp.now(),
             });
             mostrarNotificacao("Serviço cadastrado com sucesso!", "sucesso");
+            fecharModalCadastroAnimado();
         }
         setForm(camposIniciais);
         setEditId(null);
@@ -292,10 +307,7 @@ export default function ServicosManager() {
                         </button>
                         <h2 className="text-2xl font-bold mb-6 text-center text-black">Cadastrar Serviço</h2>
                         <form
-                            onSubmit={async (e) => {
-                                await handleSubmit(e);
-                                setModalCadastro(false);
-                            }}
+                            onSubmit={handleSubmit}
                             className="flex flex-col gap-4"
                         >
                             <div className="relative">
@@ -423,6 +435,16 @@ export default function ServicosManager() {
                                 e.preventDefault();
                                 if (!form.nomeDoServico || !form.valor || !form.duracaoEmMinutos) {
                                     setErro("Preencha todos os campos obrigatórios.");
+                                    return;
+                                }
+                                // Validação: não permitir nomes duplicados ao editar
+                                const nomeNormalizado = form.nomeDoServico.trim().toLowerCase();
+                                const jaExiste = servicos.some(s =>
+                                    s.nomeDoServico.trim().toLowerCase() === nomeNormalizado &&
+                                    s.id !== editId // ignora o próprio serviço
+                                );
+                                if (jaExiste) {
+                                    setErro("Já existe um serviço com esse nome.");
                                     return;
                                 }
                                 await atualizarServico(editId!, {

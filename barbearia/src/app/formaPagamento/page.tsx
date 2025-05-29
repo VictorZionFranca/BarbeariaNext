@@ -38,6 +38,7 @@ export default function FormaPagamentoPage() {
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setErro(""); // limpa o erro ao digitar
   }
 
   // Função para mostrar notificação
@@ -56,21 +57,34 @@ export default function FormaPagamentoPage() {
       setErro("O nome é obrigatório.");
       return;
     }
+
+    // Validação: não permitir nomes duplicados ao cadastrar ou editar
+    const nomeNormalizado = form.nome.trim().toLowerCase();
+    const jaExiste = formas.some(f =>
+      f.nome.trim().toLowerCase() === nomeNormalizado &&
+      (!editId || f.id !== editId)
+    );
+    if (jaExiste) {
+      setErro("Já existe uma forma de pagamento com esse nome.");
+      return;
+    }
+
     if (editId) {
       await updateDoc(doc(formasPagamentoCollection, editId), {
         nome: form.nome,
       });
       mostrarNotificacao("Forma de pagamento editada com sucesso!", "sucesso");
+      fecharModalAnimado(); // Fecha o modal de edição
     } else {
       await setDoc(doc(formasPagamentoCollection, form.nome), {
         nome: form.nome,
         criadoEm: serverTimestamp(),
       });
       mostrarNotificacao("Forma de pagamento cadastrada com sucesso!", "sucesso");
+      fecharModalCadastroAnimado(); // Fecha o modal de cadastro
     }
     setForm({ nome: "" });
     setEditId(null);
-    fecharModalAnimado();
     setErro("");
     carregarFormas();
   }
