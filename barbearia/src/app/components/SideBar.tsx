@@ -20,6 +20,8 @@ import {
   BsBuilding
 } from "react-icons/bs";
 
+import { FaCreditCard } from "react-icons/fa6";
+
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
@@ -54,7 +56,7 @@ export default function Sidebar() {
       { href: "/unidades", icon: <BsBuilding />, label: "Unidades" },
       { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
       { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
-      { href: "/formaPagamento", icon: <BsCashCoin />, label: "Forma de Pagamento" },
+      { href: "/formaPagamento", icon: <FaCreditCard />, label: "Forma de Pagamento" },
     ],
     []
   );
