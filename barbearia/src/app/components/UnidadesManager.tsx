@@ -156,6 +156,17 @@ export default function UnidadesManager() {
         }, 300);
     }
 
+    function aplicarMascaraTelefone(valor: string) {
+        valor = valor.replace(/\D/g, "");
+
+        if (valor.length === 0) return "";
+        if (valor.length < 3) return `(${valor}`;
+        if (valor.length < 7) return `(${valor.slice(0, 2)}) ${valor.slice(2)}`;
+        if (valor.length < 11)
+            return `(${valor.slice(0, 2)}) ${valor.slice(2, 6)}-${valor.slice(6)}`;
+        return `(${valor.slice(0, 2)}) ${valor.slice(2, 7)}-${valor.slice(7, 11)}`;
+    }
+
     return (
         <div className="flex flex-col min-h-[78vh]">
             <div className="flex mb-4 items-center justify-between">
@@ -472,7 +483,7 @@ export default function UnidadesManager() {
                                         id="telefone"
                                         placeholder=" "
                                         value={form.telefone}
-                                        onChange={handleChange}
+                                        onChange={e => setForm({ ...form, telefone: aplicarMascaraTelefone(e.target.value) })}
                                         className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
                                         required
                                     />
@@ -717,7 +728,7 @@ export default function UnidadesManager() {
                                         id="telefone"
                                         placeholder=" "
                                         value={form.telefone}
-                                        onChange={handleChange}
+                                        onChange={e => setForm({ ...form, telefone: aplicarMascaraTelefone(e.target.value) })}
                                         className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
                                         required
                                     />

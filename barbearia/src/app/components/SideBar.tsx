@@ -54,6 +54,7 @@ export default function Sidebar() {
       { href: "/unidades", icon: <BsBuilding />, label: "Unidades" },
       { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
       { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
+      { href: "/formaPagamento", icon: <BsCashCoin />, label: "Forma de Pagamento" },
     ],
     []
   );
