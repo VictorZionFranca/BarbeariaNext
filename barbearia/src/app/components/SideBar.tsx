@@ -14,10 +14,11 @@ import {
   BsFilePerson,
   BsScissors,
   BsBoxSeam,
-  BsCashCoin,
+  // BsCashCoin,
   BsBoxArrowInLeft,
   BsList,
-  BsBuilding
+  BsBuilding,
+  BsNewspaper
 } from "react-icons/bs";
 
 import { FaCreditCard } from "react-icons/fa6";
@@ -55,7 +56,7 @@ export default function Sidebar() {
       { href: "/servicos", icon: <BsScissors />, label: "Serviços" },
       { href: "/unidades", icon: <BsBuilding />, label: "Unidades" },
       { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
-      { href: "/financeiro", icon: <BsCashCoin />, label: "Financeiro" },
+      { href: "/noticias", icon: <BsNewspaper />, label: "Notícias" },
       { href: "/formaPagamento", icon: <FaCreditCard />, label: "Forma de Pagamento" },
     ],
     []
