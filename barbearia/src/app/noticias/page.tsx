@@ -13,47 +13,11 @@ import {
     doc,
     updateDoc,
     deleteDoc,
-    serverTimestamp,
-    Timestamp,
-    setDoc
 } from "firebase/firestore";
 
 import { getAuth } from "firebase/auth";
 import { db } from "../../lib/firebaseConfig";
-
-type Noticia = {
-    id: string;
-    titulo: string;
-    conteudo: string;
-    autor: string | null;
-    imagemURL: string;
-    ativo: boolean;
-    dataPublicacao: Timestamp | null;
-};
-
-export async function criarNoticiaComIdIncremental(noticia: Omit<Noticia, "id" | "dataPublicacao">) {
-    const noticiasCollection = collection(db, "noticias");
-
-    const snapshot = await getDocs(noticiasCollection);
-
-    let maior = 0;
-    snapshot.forEach((docSnap) => {
-        const match = docSnap.id.match(/^noticia(\d+)$/);
-        if (match) {
-            const num = parseInt(match[1]);
-            if (num > maior) maior = num;
-        }
-    });
-
-    const novoId = `noticia${maior + 1}`;
-
-    await setDoc(doc(noticiasCollection, novoId), {
-        ...noticia,
-        dataPublicacao: serverTimestamp(),
-    });
-
-    return novoId;
-}
+import { criarNoticiaComIdIncremental, Noticia } from "../utils/firestoreNoticias";
 
 export default function NoticiasPage() {
     const auth = getAuth();
