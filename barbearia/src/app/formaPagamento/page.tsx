@@ -2,7 +2,7 @@
 import React, { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { db } from "../../lib/firebaseConfig";
 import { collection, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { FaPencilAlt, FaTrash } from "react-icons/fa";
+import { FaPencilAlt, FaTrash, FaPlus } from "react-icons/fa";
 
 interface FormaPagamento {
   id?: string;
@@ -187,9 +187,10 @@ export default function FormaPagamentoPage() {
           )}
         </div>
         <button
-          className="bg-green-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-green-700"
+          className="bg-green-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 hover:bg-green-700 flex items-center gap-2"
           onClick={abrirModalCadastroAnimado}
         >
+          <FaPlus className="h-4 w-4" />
           Nova Forma de Pagamento
         </button>
       </div>
@@ -235,7 +236,14 @@ export default function FormaPagamentoPage() {
         </tbody>
       </table>
       {modal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              fecharModalAnimado();
+            }
+          }}
+        >
           <div
             className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
               transform transition-all duration-300
@@ -296,7 +304,14 @@ export default function FormaPagamentoPage() {
         </div>
       )}
       {modalExcluir.aberto && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              fecharModalExcluirAnimado();
+            }
+          }}
+        >
           <div
             className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
               transform transition-all duration-300
@@ -332,7 +347,14 @@ export default function FormaPagamentoPage() {
         </div>
       )}
       {modalCadastro && (
-        <div className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300">
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              fecharModalCadastroAnimado();
+            }
+          }}
+        >
           <div
             className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
               transform transition-all duration-300

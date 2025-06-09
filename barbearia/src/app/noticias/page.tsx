@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FaPencilAlt, FaTrash, FaEye } from "react-icons/fa";
+import { FaPencilAlt, FaTrash, FaEye, FaPlus } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import { createPortal } from "react-dom";
 
@@ -189,10 +189,10 @@ export default function NoticiasPage() {
                     )}
                 </div>
                 <button
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center gap-2"
                     onClick={abrirModalCadastro}
                 >
-                    Nova Notícia
+                    <FaPlus className="h-4 w-4" /> Nova Notícia
                 </button>
             </div>
 
@@ -289,6 +289,11 @@ export default function NoticiasPage() {
                         role="dialog"
                         aria-modal="true"
                         tabIndex={-1}
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                fecharModal();
+                            }
+                        }}
                     >
                         <div
                             className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg relative border border-gray-200
@@ -418,6 +423,11 @@ export default function NoticiasPage() {
             `}
                         role="dialog"
                         aria-modal="true"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                fecharModalExcluir();
+                            }
+                        }}
                     >
                         <div
                             className={`bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm relative border border-gray-200
@@ -468,6 +478,11 @@ export default function NoticiasPage() {
             `}
                         role="dialog"
                         aria-modal="true"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                fecharModalVisualizar();
+                            }
+                        }}
                     >
                         <div
                             className={`bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xl relative border border-gray-200

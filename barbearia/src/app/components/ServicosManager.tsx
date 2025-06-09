@@ -2,7 +2,7 @@
 import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
 import { listarServicos, criarServicoComIdIncremental, atualizarServico, deletarServico } from "../utils/firestoreServicos";
 import { Timestamp } from "firebase/firestore";
-import { FaPencilAlt, FaTrash, FaCheck } from "react-icons/fa";
+import { FaPencilAlt, FaTrash, FaCheck, FaPlus } from "react-icons/fa";
 
 const camposIniciais = { nomeDoServico: "", valor: "", duracaoEmMinutos: "", descricao: "" };
 
@@ -185,16 +185,16 @@ export default function ServicosManager() {
                     </div>
                 </div>
                 <button
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg min-w-[180px] transition-colors duration-200 hover:bg-green-700"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg min-w-[180px] transition-colors duration-200 hover:bg-green-700 flex items-center gap-2"
                     onClick={() => {
                         setModalCadastro(true);
                         setEditId(null);
                         setForm(camposIniciais);
                         setModalAnimando("cadastro");
-                        setTimeout(() => setModalAnimando(null), 100); // igual ao duration-300
+                        setTimeout(() => setModalAnimando(null), 100);
                     }}
                 >
-                    Cadastrar Serviço
+                    <FaPlus className="h-4 w-4" /> Cadastrar Serviço
                 </button>
             </div>
             <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
@@ -255,7 +255,14 @@ export default function ServicosManager() {
             </table>
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+                <div 
+                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            fecharModalExcluirAnimado();
+                        }
+                    }}
+                >
                     <div
                         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
                             transform transition-all duration-300
@@ -290,7 +297,14 @@ export default function ServicosManager() {
                 </div>
             )}
             {modalCadastro && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+                <div 
+                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            fecharModalCadastroAnimado();
+                        }
+                    }}
+                >
                     <div
                         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
                             transform transition-all duration-300
@@ -414,7 +428,14 @@ export default function ServicosManager() {
                 </div>
             )}
             {modalEditar && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300">
+                <div 
+                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            fecharModalEditarAnimado();
+                        }
+                    }}
+                >
                     <div
                         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
                             transform transition-all duration-300

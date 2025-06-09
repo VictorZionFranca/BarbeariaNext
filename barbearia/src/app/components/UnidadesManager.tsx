@@ -1,7 +1,7 @@
 "use client";
 import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
 import { listarUnidades, criarUnidade, atualizarUnidade, deletarUnidade } from "../utils/firestoreUnidades";
-import { FaPencilAlt, FaTrash } from "react-icons/fa";
+import { FaPencilAlt, FaTrash, FaPlus } from "react-icons/fa";
 import { createPortal } from "react-dom";
 
 // Defina a interface no topo do arquivo
@@ -193,7 +193,7 @@ export default function UnidadesManager() {
                 </div>
                 {/* Botão de cadastro */}
                 <button
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg min-w-[180px] transition-colors duration-200 hover:bg-green-700"
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg min-w-[180px] transition-colors duration-200 hover:bg-green-700 flex items-center gap-2"
                     onClick={() => {
                         setModalCadastro(true);
                         setEditId(null);
@@ -202,7 +202,7 @@ export default function UnidadesManager() {
                         setTimeout(() => setModalAnimando(null), 100);
                     }}
                 >
-                    Cadastrar Unidade
+                     <FaPlus className="h-4 w-4" />Cadastrar Unidade
                 </button>
             </div>
             <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
@@ -257,7 +257,14 @@ export default function UnidadesManager() {
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && typeof window !== "undefined" && document.body &&
                 createPortal(
-                    <div className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300">
+                    <div 
+                        className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                fecharModalExcluirAnimado();
+                            }
+                        }}
+                    >
                         <div
                             className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative
                                 transform transition-all duration-300
@@ -294,7 +301,14 @@ export default function UnidadesManager() {
                 )}
             {modalCadastro && typeof window !== "undefined" && document.body &&
                 createPortal(
-                    <div className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300">
+                    <div 
+                        className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                fecharModalCadastroAnimado();
+                            }
+                        }}
+                    >
                         <div
                             className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl border border-gray-200 relative
                                 transform transition-all duration-300
@@ -520,7 +534,14 @@ export default function UnidadesManager() {
                 )}
             {modalEditar && typeof window !== "undefined" && document.body &&
                 createPortal(
-                    <div className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300">
+                    <div 
+                        className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                fecharModalEditarAnimado();
+                            }
+                        }}
+                    >
                         <div
                             className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl border border-gray-200 relative
                                 transform transition-all duration-300
