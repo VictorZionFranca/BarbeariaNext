@@ -18,7 +18,8 @@ import {
   BsBoxArrowInLeft,
   BsList,
   BsBuilding,
-  BsNewspaper
+  BsNewspaper,
+  BsX
 } from "react-icons/bs";
 
 import { FaCreditCard } from "react-icons/fa6";
@@ -83,19 +84,20 @@ export default function Sidebar() {
           onClick={toggleSidebar}
           className="py-3 px-5 focus:outline-none hover:bg-gray-700 rounded-lg mt-2 mb-1 text-2xl"
         >
-          {isOpen ? <BsList /> : <BsList />}
+          {isOpen ? <BsX /> : <BsList /> }
         </button>
 
         {/* Navegação */}
-        <nav className="flex flex-col flex-grow">
-          <ul>
+        <nav className="flex flex-col flex-grow overflow-hidden">
+          <ul className="overflow-y-auto h-[calc(100vh-8rem)] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full">
             {menuItems.map((item, index) => (
               <Link href={item.href} key={item.href}>
                 <li
                   className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300
-                  ${highlightIndex === index ? "bg-[#D2A348] text-white" : "hover:bg-gray-700"}`}
+                  ${highlightIndex === index ? "bg-[#D2A348] text-white" : "hover:bg-gray-700"}
+                  ${!isOpen ? "justify-center" : ""}`}
                 >
-                  {item.icon}
+                  <span className="text-lg">{item.icon}</span>
                   <span
                     className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${
                       isOpen
@@ -120,9 +122,10 @@ export default function Sidebar() {
           <ul className="mt-auto">
             <li
               onClick={handleLogout} // Chama a função de logout ao clicar
-              className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-700  cursor-pointer`}
+              className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-700 cursor-pointer
+              ${!isOpen ? "justify-center" : ""}`}
             >
-              <BsBoxArrowInLeft />
+              <span className="text-lg"><BsBoxArrowInLeft /></span>
               <span
                 className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${
                   isOpen ? "opacity-100 max-w-full ml-2" : "opacity-0 max-w-0"
