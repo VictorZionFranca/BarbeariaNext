@@ -196,86 +196,202 @@ export default function NoticiasPage() {
                 </button>
             </div>
 
-            <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
-                <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200">
-                        <th className="p-4 text-left font-semibold text-gray-700">Imagem</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Título</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Conteúdo</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Ativo</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Autor</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Data Publicação</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {noticiasFiltradas.length === 0 ? (
-                        <tr>
-                            <td colSpan={7} className="p-6 text-center text-gray-500">
-                                Nenhuma notícia cadastrada.
-                            </td>
-                        </tr>
-                    ) : (
-                        noticiasFiltradas.map((noticia) => (
-                            <tr
-                                key={noticia.id}
-                                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                            >
-                                <td className="p-4 align-middle">
-                                    {noticia.imagemURL ? (
-                                        <img
-                                            src={noticia.imagemURL}
-                                            alt={noticia.titulo}
-                                            className="max-w-[100px] rounded-lg"
-                                        />
-                                    ) : (
-                                        "—"
-                                    )}
-                                </td>
-                                <td className="p-4 align-middle font-semibold">
-                                    {noticia.titulo.length > 50 ? `${noticia.titulo.slice(0, 50)}...` : noticia.titulo}
-                                </td>
-                                <td className="p-4 align-middle">
-                                    {noticia.conteudo.length > 50 ? `${noticia.conteudo.slice(0, 50)}...` : noticia.conteudo}
-                                </td>
-                                <td className="p-4 align-middle">{noticia.ativo ? "Sim" : "Não"}</td>
-                                <td className="p-4 align-middle">{noticia.autor}</td>
-                                <td className="p-4 align-middle">
-                                    {noticia.dataPublicacao
-                                        ? new Date(noticia.dataPublicacao.seconds * 1000).toLocaleString()
-                                        : "—"}
-                                </td>
-                                <td className="p-4 align-middle">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => abrirModalEditar(noticia)}
-                                            className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors duration-200"
-                                            title="Editar"
-                                        >
-                                            <FaPencilAlt className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => abrirModalExcluir(noticia)}
-                                            className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center hover:bg-red-800 transition-colors duration-200"
-                                            title="Excluir"
-                                        >
-                                            <FaTrash className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => abrirModalVisualizar(noticia)}
-                                            className="bg-purple-600 text-white px-3 py-2 rounded-lg flex items-center justify-center hover:bg-purple-800 transition-colors duration-200"
-                                            title="Visualizar"
-                                        >
-                                            <FaEye className="h-4 w-4" />
-                                        </button>
-
-                                    </div>
-                                </td>
+            {/* Tabela de Notícias Ativas */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Imagem
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Título
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Conteúdo
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Autor
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Data Publicação
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Ações
+                                </th>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {noticiasFiltradas.filter(n => n.ativo).length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                                        Nenhuma notícia ativa encontrada.
+                                    </td>
+                                </tr>
+                            ) : (
+                                noticiasFiltradas.filter(n => n.ativo).map((n) => (
+                                    <tr key={n.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {n.imagemURL ? (
+                                                <img
+                                                    src={n.imagemURL}
+                                                    alt={n.titulo}
+                                                    className="h-24 w-24 object-cover rounded-lg"
+                                                />
+                                            ) : (
+                                                "—"
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900">
+                                                {n.titulo.length > 50 ? `${n.titulo.slice(0, 50)}...` : n.titulo}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500 line-clamp-2">
+                                                {n.conteudo.length > 50 ? `${n.conteudo.slice(0, 50)}...` : n.conteudo}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-500">
+                                                {n.autor}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-500">
+                                                {n.dataPublicacao ? new Date(n.dataPublicacao.seconds * 1000).toLocaleString() : "—"}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => abrirModalVisualizar(n)}
+                                                    className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors duration-200"
+                                                    title="Visualizar"
+                                                >
+                                                    <FaEye className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => abrirModalEditar(n)}
+                                                    className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                    title="Editar"
+                                                >
+                                                    <FaPencilAlt className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => abrirModalExcluir(n)}
+                                                    className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                    title="Excluir"
+                                                >
+                                                    <FaTrash className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Seção de Notícias Inativas */}
+            {noticiasFiltradas.filter(n => !n.ativo).length > 0 && (
+                <div className="mt-8">
+                    <h2 className="text-xl font-semibold text-gray-600 mb-4">Notícias Inativas</h2>
+                    <div className="bg-gray-50 rounded-xl shadow-md overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Imagem
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Título
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Conteúdo
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Autor
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Data Publicação
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Ações
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-gray-50 divide-y divide-gray-200">
+                                    {noticiasFiltradas.filter(n => !n.ativo).map((n) => (
+                                        <tr key={n.id} className="hover:bg-gray-100">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {n.imagemURL ? (
+                                                    <img
+                                                        src={n.imagemURL}
+                                                        alt={n.titulo}
+                                                        className="h-24 w-24 object-cover rounded-lg opacity-75"
+                                                    />
+                                                ) : (
+                                                    "—"
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-600">
+                                                    {n.titulo.length > 50 ? `${n.titulo.slice(0, 50)}...` : n.titulo}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-400 line-clamp-2">
+                                                    {n.conteudo.length > 50 ? `${n.conteudo.slice(0, 50)}...` : n.conteudo}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-400">
+                                                    {n.autor}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-400">
+                                                    {n.dataPublicacao ? new Date(n.dataPublicacao.seconds * 1000).toLocaleString() : "—"}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => abrirModalVisualizar(n)}
+                                                        className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors duration-200"
+                                                        title="Visualizar"
+                                                    >
+                                                        <FaEye className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => abrirModalEditar(n)}
+                                                        className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                        title="Editar"
+                                                    >
+                                                        <FaPencilAlt className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => abrirModalExcluir(n)}
+                                                        className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                        title="Excluir"
+                                                    >
+                                                        <FaTrash className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Cadastro / Edição */}
             {modalAberto &&
@@ -312,9 +428,7 @@ export default function NoticiasPage() {
                             <h2 className="text-2xl font-bold mb-6 text-center text-black">
                                 {noticiaEditando ? "Editar Notícia" : "Nova Notícia"}
                             </h2>
-                            <form onSubmit={salvarNoticia} className="flex flex-col gap-6">
-
-                                {/* Título */}
+                            <form onSubmit={salvarNoticia} className="flex flex-col gap-4">
                                 <div className="relative">
                                     <input
                                         type="text"
@@ -322,7 +436,8 @@ export default function NoticiasPage() {
                                         placeholder=" "
                                         value={formTitulo}
                                         onChange={(e) => setFormTitulo(e.target.value)}
-                                        className="peer w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
+                                        maxLength={75}
+                                        className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
                                         required
                                     />
                                     <label
@@ -332,19 +447,17 @@ export default function NoticiasPage() {
                                 peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
                                 peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
                                     >
-                                        Título
+                                        Título da Notícia
                                     </label>
                                 </div>
-
-                                {/* Conteúdo */}
                                 <div className="relative">
                                     <textarea
                                         id="conteudo"
                                         placeholder=" "
                                         value={formConteudo}
                                         onChange={(e) => setFormConteudo(e.target.value)}
-                                        className="peer w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-y text-black"
-                                        rows={5}
+                                        maxLength={75}
+                                        className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full min-h-[100px]"
                                         required
                                     />
                                     <label
@@ -357,8 +470,6 @@ export default function NoticiasPage() {
                                         Conteúdo
                                     </label>
                                 </div>
-
-                                {/* Imagem URL */}
                                 <div className="relative">
                                     <input
                                         type="text"
@@ -366,7 +477,7 @@ export default function NoticiasPage() {
                                         placeholder=" "
                                         value={formImagemURL}
                                         onChange={(e) => setFormImagemURL(e.target.value)}
-                                        className="peer w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
+                                        className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
                                     />
                                     <label
                                         htmlFor="imagem"
@@ -378,19 +489,18 @@ export default function NoticiasPage() {
                                         URL da imagem
                                     </label>
                                 </div>
-
-                                {/* Checkbox Ativo */}
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={formAtivo}
-                                        onChange={(e) => setFormAtivo(e.target.checked)}
-                                        className="w-5 h-5"
-                                    />
-                                    <span className="text-black select-none">Ativo</span>
-                                </label>
-
-                                {/* Botões */}
+                                <div className="flex items-center gap-2">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formAtivo}
+                                            onChange={(e) => setFormAtivo(e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                        <span className="ml-3 text-sm font-medium text-gray-900">Notícia Ativa</span>
+                                    </label>
+                                </div>
                                 <div className="flex gap-4 mt-4 justify-center">
                                     <button
                                         type="submit"
@@ -491,41 +601,38 @@ export default function NoticiasPage() {
                 `}
                         >
                             <button
-                                className="absolute top-0 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
                                 onClick={fecharModalVisualizar}
                                 aria-label="Fechar"
                                 type="button"
                             >
                                 ×
                             </button>
-                            {noticiaVisualizando.imagemURL && (
-                                <img
-                                    src={noticiaVisualizando.imagemURL}
-                                    alt={noticiaVisualizando.titulo}
-                                    className="w-full max-h-[300px] object-cover rounded-xl mb-2"
-                                />
-                            )}
-                            <div className="text-sm text-gray-600 text-left mb-6">
-                                <span>
-                                    {(() => {
-                                        if (noticiaVisualizando.dataPublicacao) {
-                                            const dateObj = noticiaVisualizando.dataPublicacao.toDate();
-                                            const day = String(dateObj.getDate()).padStart(2, "0");
-                                            const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-                                            const year = dateObj.getFullYear();
-
-                                            return `${day}/${month}/${year} por ${noticiaVisualizando.autor}`;
-                                        }
-                                        return `por ${noticiaVisualizando.autor}`;
-                                    })()}
-                                </span>
-                            </div>
-                            <h2 className="text-3xl font-bold mb-4 text-center text-black">
+                            <h2 className="text-2xl font-bold mb-6 text-center text-black">
                                 {noticiaVisualizando.titulo}
                             </h2>
-                            <p className="text-black text-justify mb-6 whitespace-pre-line">
-                                {noticiaVisualizando.conteudo}
-                            </p>
+                            <div className="flex flex-col gap-4">
+                                <div className="relative h-96 w-full">
+                                    {noticiaVisualizando.imagemURL && (
+                                        <img
+                                            src={noticiaVisualizando.imagemURL}
+                                            alt={noticiaVisualizando.titulo}
+                                            className="w-full h-full object-contain rounded"
+                                        />
+                                    )}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                    {noticiaVisualizando.conteudo}
+                                </div>
+                                <div className="flex justify-between items-center text-sm text-gray-500">
+                                    <span>Autor: {noticiaVisualizando.autor}</span>
+                                    <span>
+                                        {noticiaVisualizando.dataPublicacao
+                                            ? new Date(noticiaVisualizando.dataPublicacao.seconds * 1000).toLocaleString()
+                                            : "—"}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>,
                     document.body

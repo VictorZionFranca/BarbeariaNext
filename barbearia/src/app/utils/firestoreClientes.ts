@@ -42,7 +42,7 @@ async function verificarDuplicatas(cliente: Omit<Cliente, "id" | "criadoEm" | "d
 // Listar todos os clientes
 export async function listarClientes() {
     const clientesRef = collection(db, "pessoas");
-    const q = query(clientesRef, where("dataInativacao", "==", null));
+    const q = query(clientesRef, where("dataInativacao", "==", null), where("tipoPessoa", "==", 1));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({
         id: doc.id,
@@ -74,6 +74,7 @@ export async function criarCliente(cliente: Omit<Cliente, "id" | "criadoEm" | "d
     const clientesRef = collection(db, "pessoas");
     const novoCliente = {
         ...cliente,
+        tipoPessoa: 1,
         criadoEm: Timestamp.now(),
         dataInativacao: null
     };
