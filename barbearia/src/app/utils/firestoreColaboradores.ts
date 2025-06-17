@@ -81,7 +81,7 @@ export async function criarColaborador(colaborador: Omit<Colaborador, "id" | "cr
     
     // Obter o próximo ID sequencial
     const nextId = await getNextSequentialId();
-    const docId = `pessoa_${nextId}`;
+    const docId = `pessoa${nextId}`;
 
     // Usar setDoc para definir o ID personalizado
     const docRef = doc(colaboradoresRef, docId);

@@ -81,7 +81,7 @@ export async function criarCliente(cliente: Omit<Cliente, "id" | "criadoEm" | "d
     
     // Obter o próximo ID sequencial
     const nextId = await getNextSequentialId();
-    const docId = `pessoa_${nextId}`;
+    const docId = `pessoa${nextId}`;
 
     // Usar setDoc para definir o ID personalizado
     const docRef = doc(clientesRef, docId);
