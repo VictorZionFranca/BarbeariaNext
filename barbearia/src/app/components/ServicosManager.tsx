@@ -4,7 +4,13 @@ import { listarServicos, criarServicoComIdIncremental, atualizarServico, deletar
 import { Timestamp } from "firebase/firestore";
 import { FaPencilAlt, FaTrash, FaCheck, FaPlus } from "react-icons/fa";
 
-const camposIniciais = { nomeDoServico: "", valor: "", duracaoEmMinutos: "", descricao: "" };
+const camposIniciais = { 
+    nomeDoServico: "", 
+    valor: "", 
+    duracaoEmMinutos: "", 
+    descricao: "",
+    ativo: true 
+};
 
 export default function ServicosManager() {
     type Servico = {
@@ -13,11 +19,12 @@ export default function ServicosManager() {
         valor: number;
         duracaoEmMinutos: number;
         descricao?: string;
+        ativo: boolean;
     };
 
     const [servicos, setServicos] = useState<Servico[]>([]);
     const [busca, setBusca] = useState("");
-    const [form, setForm] = useState<{ nomeDoServico: string; valor: string; duracaoEmMinutos: string; descricao: string }>(camposIniciais);
+    const [form, setForm] = useState<{ nomeDoServico: string; valor: string; duracaoEmMinutos: string; descricao: string; ativo: boolean }>(camposIniciais);
     const [editId, setEditId] = useState<string | null>(null);
     const [erro, setErro] = useState("");
     const [modalExcluir, setModalExcluir] = useState<{ aberto: boolean; id: string | null }>({ aberto: false, id: null });
@@ -28,7 +35,14 @@ export default function ServicosManager() {
     const [notificacaoVisivel, setNotificacaoVisivel] = useState(false);
 
     const carregarServicos = useCallback(async () => {
-        type ServicoFirestore = { id: string; nomeDoServico?: string; valor?: number; duracaoEmMinutos?: number; descricao?: string };
+        type ServicoFirestore = { 
+            id: string; 
+            nomeDoServico?: string; 
+            valor?: number; 
+            duracaoEmMinutos?: number; 
+            descricao?: string;
+            ativo?: boolean;
+        };
         const lista = await listarServicos() as ServicoFirestore[];
         const listaCompletada = lista.map((item) => ({
             id: item.id,
@@ -36,6 +50,7 @@ export default function ServicosManager() {
             valor: item.valor ?? 0,
             duracaoEmMinutos: item.duracaoEmMinutos ?? 0,
             descricao: item.descricao ?? "",
+            ativo: item.ativo ?? true,
         }));
         setServicos(listaCompletada);
     }, []);
@@ -73,6 +88,7 @@ export default function ServicosManager() {
                 valor: Number(form.valor),
                 duracaoEmMinutos: Number(form.duracaoEmMinutos),
                 descricao: form.descricao,
+                ativo: form.ativo
             });
             mostrarNotificacao("Serviço editado com sucesso!", "sucesso");
             fecharModalEditarAnimado();
@@ -82,6 +98,7 @@ export default function ServicosManager() {
                 valor: Number(form.valor),
                 duracaoEmMinutos: Number(form.duracaoEmMinutos),
                 descricao: form.descricao,
+                ativo: form.ativo,
                 criadoEm: Timestamp.now(),
             });
             mostrarNotificacao("Serviço cadastrado com sucesso!", "sucesso");
@@ -99,6 +116,7 @@ export default function ServicosManager() {
             valor: servico.valor.toString(),
             duracaoEmMinutos: servico.duracaoEmMinutos.toString(),
             descricao: servico.descricao ?? "",
+            ativo: servico.ativo
         });
         setEditId(servico.id);
         setModalEditar(true);
@@ -165,6 +183,7 @@ export default function ServicosManager() {
             <div className="flex mb-4 items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="relative w-[400px]">
+                        <h1 className="text-2xl font-bold text-black my-8">Serviços</h1>
                         <input
                             type="text"
                             placeholder="Buscar serviço..."
@@ -176,7 +195,7 @@ export default function ServicosManager() {
                             <button
                                 type="button"
                                 onClick={() => setBusca("")}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                                className="absolute right-2 bottom-1 text-gray-400 hover:text-gray-700 text-2xl font-bold"
                                 aria-label="Limpar busca"
                             >
                                 ×
@@ -197,66 +216,165 @@ export default function ServicosManager() {
                     <FaPlus className="h-4 w-4" /> Cadastrar Serviço
                 </button>
             </div>
-            <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
-                <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200">
-                        <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Valor</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Duração (min)</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Descrição</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {servicosFiltrados.length === 0 ? (
-                        <tr>
-                            <td colSpan={5} className="p-6 text-center text-gray-500">
-                                Nenhum serviço encontrado.
-                            </td>
-                        </tr>
-                    ) : (
-                        servicosFiltrados.map((s) => (
-                            <tr
-                                key={s.id}
-                                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                            >
-                                <td className="p-4 align-middle">{s.nomeDoServico}</td>
-                                <td className="p-4 align-middle">
-                                    R$ {Number(s.valor).toFixed(2).replace('.', ',')}
-                                </td>
-                                <td className="p-4 align-middle">
-                                    {s.duracaoEmMinutos}:00
-                                </td>
-                                <td className="p-4 align-middle">
-                                    {s.descricao ? (s.descricao.length > 40 ? s.descricao.slice(0, 40) + "..." : s.descricao) : ""}
-                                </td>
-                                <td className="p-4 align-middle">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleEditar(s)}
-                                            className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
-                                            title="Editar"
-                                        >
-                                            <FaPencilAlt className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleExcluir(s.id)}
-                                            className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
-                                            title="Excluir"
-                                        >
-                                            <FaTrash className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </td>
+
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Nome
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Preço
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Duração
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Descrição
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Ações
+                                </th>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {servicosFiltrados.filter(s => s.ativo).length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                                        Nenhum serviço ativo encontrado.
+                                    </td>
+                                </tr>
+                            ) : (
+                                servicosFiltrados.filter(s => s.ativo).map((s) => (
+                                    <tr key={s.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900">
+                                                {s.nomeDoServico}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">
+                                                R$ {Number(s.valor).toFixed(2).replace('.', ',')}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">
+                                                {s.duracaoEmMinutos}:00
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">
+                                                {s.descricao ? (s.descricao.length > 40 ? s.descricao.slice(0, 40) + "..." : s.descricao) : ""}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditar(s)}
+                                                    className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                    title="Editar"
+                                                >
+                                                    <FaPencilAlt className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleExcluir(s.id)}
+                                                    className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                    title="Excluir"
+                                                >
+                                                    <FaTrash className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Seção de Serviços Inativos */}
+            {servicosFiltrados.filter(s => !s.ativo).length > 0 && (
+                <div className="mt-8">
+                    <h2 className="text-xl font-semibold text-gray-600 mb-4">Serviços Inativos</h2>
+                    <div className="bg-gray-50 rounded-xl shadow-md overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Nome
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Preço
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Duração
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Descrição
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Ações
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-gray-50 divide-y divide-gray-200">
+                                    {servicosFiltrados.filter(s => !s.ativo).map((s) => (
+                                        <tr key={s.id} className="hover:bg-gray-100">
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-600">
+                                                    {s.nomeDoServico}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-400">
+                                                    R$ {Number(s.valor).toFixed(2).replace('.', ',')}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-400">
+                                                    {s.duracaoEmMinutos}:00
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-400">
+                                                    {s.descricao ? (s.descricao.length > 40 ? s.descricao.slice(0, 40) + "..." : s.descricao) : ""}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleEditar(s)}
+                                                        className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                        title="Editar"
+                                                    >
+                                                        <FaPencilAlt className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExcluir(s.id)}
+                                                        className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                        title="Excluir"
+                                                    >
+                                                        <FaTrash className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && (
                 <div 
-                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+                    className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
                             fecharModalExcluirAnimado();
@@ -277,7 +395,7 @@ export default function ServicosManager() {
                         >
                             ×
                         </button>
-                        <h2 className="text-2xl font-bold mb-6 text-center text-red-700">Excluir Serviço</h2>
+                        <h2 className="text-2xl font-bold mb-6 text-center text-black">Excluir Serviço</h2>
                         <p className="text-center text-black mb-8">Tem certeza que deseja excluir este serviço?</p>
                         <div className="flex gap-4 justify-center">
                             <button
@@ -296,9 +414,10 @@ export default function ServicosManager() {
                     </div>
                 </div>
             )}
+            {/* Modal de Cadastro */}
             {modalCadastro && (
                 <div 
-                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+                    className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
                             fecharModalCadastroAnimado();
@@ -362,7 +481,7 @@ export default function ServicosManager() {
                                         peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
                                         peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
                                 >
-                                    Valor
+                                    Preço
                                 </label>
                             </div>
                             <div className="relative">
@@ -407,6 +526,19 @@ export default function ServicosManager() {
                                     Descrição
                                 </label>
                             </div>
+                            <div className="flex items-center gap-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        name="ativo"
+                                        checked={form.ativo}
+                                        onChange={(e) => setForm(prev => ({ ...prev, ativo: e.target.checked }))}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                    <span className="ml-3 text-sm font-medium text-gray-900">Serviço Ativo</span>
+                                </label>
+                            </div>
                             {erro && <span className="text-red-500 text-center">{erro}</span>}
                             <div className="flex gap-4 mt-4 justify-center">
                                 <button
@@ -427,9 +559,10 @@ export default function ServicosManager() {
                     </div>
                 </div>
             )}
+            {/* Modal de Edição */}
             {modalEditar && (
                 <div 
-                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 transition-opacity duration-300"
+                    className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
                             fecharModalEditarAnimado();
@@ -473,6 +606,7 @@ export default function ServicosManager() {
                                     valor: Number(form.valor),
                                     duracaoEmMinutos: Number(form.duracaoEmMinutos),
                                     descricao: form.descricao,
+                                    ativo: form.ativo
                                 });
                                 setForm(camposIniciais);
                                 setEditId(null);
@@ -520,7 +654,7 @@ export default function ServicosManager() {
                                         peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
                                         peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
                                 >
-                                    Valor
+                                    Preço
                                 </label>
                             </div>
                             <div className="relative">
@@ -565,6 +699,19 @@ export default function ServicosManager() {
                                     Descrição
                                 </label>
                             </div>
+                            <div className="flex items-center gap-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        name="ativo"
+                                        checked={form.ativo}
+                                        onChange={(e) => setForm(prev => ({ ...prev, ativo: e.target.checked }))}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                    <span className="ml-3 text-sm font-medium text-gray-900">Serviço Ativo</span>
+                                </label>
+                            </div>
                             {erro && <span className="text-red-500 text-center">{erro}</span>}
                             <div className="flex gap-4 mt-4 justify-center">
                                 <button
@@ -588,14 +735,14 @@ export default function ServicosManager() {
             {notificacao && (
                 <div
                     className={`
-      fixed bottom-6 right-6 z-[9999]
-      px-6 py-4 rounded-lg shadow-lg
-      text-white text-base font-semibold
-      flex items-center gap-2
-      transition-all duration-500
-      ${notificacao.tipo === "sucesso" ? "bg-green-600" : "bg-red-600"}
-      ${notificacaoVisivel ? "animate-slide-in-right" : "animate-slide-out-right"}
-    `}
+                        fixed bottom-6 right-6 z-[99999]
+                        px-6 py-4 rounded-lg shadow-lg
+                        text-white text-base font-semibold
+                        flex items-center gap-2
+                        transition-all duration-500
+                        ${notificacao.tipo === "sucesso" ? "bg-green-600" : "bg-red-600"}
+                        ${notificacaoVisivel ? "animate-slide-in-right" : "animate-slide-out-right"}
+                    `}
                     style={{ minWidth: 220 }}
                 >
                     {notificacao.tipo === "erro" && (

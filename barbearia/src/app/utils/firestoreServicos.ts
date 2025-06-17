@@ -10,7 +10,8 @@ export async function listarServicos() {
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
+    ativo: doc.data().ativo ?? true
   }));
 }
 
@@ -20,10 +21,15 @@ export type Servico = {
   duracaoEmMinutos: number;
   descricao?: string;
   criadoEm?: Timestamp;
+  ativo: boolean;
+  dataAtualizacao?: Timestamp;
 };
 
 export async function atualizarServico(id: string, servico: Servico) {
-  return await updateDoc(doc(db, "servicos", id), servico);
+  return await updateDoc(doc(db, "servicos", id), {
+    ...servico,
+    dataAtualizacao: Timestamp.now()
+  });
 }
 
 export async function deletarServico(id: string) {
@@ -42,6 +48,10 @@ export async function criarServicoComIdIncremental(servico: Servico) {
     }
   });
   const novoId = `servico${maior + 1}`;
-  await setDoc(doc(servicosCollection, novoId), servico);
+  await setDoc(doc(servicosCollection, novoId), {
+    ...servico,
+    criadoEm: Timestamp.now(),
+    dataAtualizacao: Timestamp.now()
+  });
   return novoId;
 }
