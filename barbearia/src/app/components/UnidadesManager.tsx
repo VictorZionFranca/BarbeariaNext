@@ -4,7 +4,6 @@ import { listarUnidades, criarUnidade, atualizarUnidade, deletarUnidade } from "
 import { FaPencilAlt, FaTrash, FaPlus } from "react-icons/fa";
 import { createPortal } from "react-dom";
 
-// Defina a interface no topo do arquivo
 interface Unidade {
     id: string;
     nome: string;
@@ -16,10 +15,10 @@ interface Unidade {
     pais: string;
     telefone: string;
     cep?: string;
+    ativo: boolean;
 }
 
 const camposIniciais = {
-    id: "",
     nome: "",
     rua: "",
     numero: "",
@@ -29,6 +28,7 @@ const camposIniciais = {
     pais: "",
     telefone: "",
     cep: "",
+    ativo: true,
 };
 
 export default function UnidadesManager() {
@@ -36,7 +36,7 @@ export default function UnidadesManager() {
     const [busca, setBusca] = useState("");
     const [form, setForm] = useState(camposIniciais);
     const [editId, setEditId] = useState<string | null>(null);
-    const [erro, setErro] = useState("");
+    const [erro, setErro] = useState<string | null>(null);
     const [modalExcluir, setModalExcluir] = useState<{ aberto: boolean; id: string | null }>({ aberto: false, id: null });
     const [modalCadastro, setModalCadastro] = useState(false);
     const [modalEditar, setModalEditar] = useState(false);
@@ -44,12 +44,7 @@ export default function UnidadesManager() {
 
     const carregarUnidades = useCallback(async () => {
         const lista = await listarUnidades();
-        setUnidades(
-            lista.map(u => ({
-                ...u,
-                id: u.id ?? "", // garante string
-            }))
-        );
+        setUnidades(lista);
     }, []);
 
     useEffect(() => {
@@ -57,39 +52,42 @@ export default function UnidadesManager() {
     }, [carregarUnidades]);
 
     function handleChange(e: ChangeEvent<HTMLInputElement>) {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        const { name, value, type } = e.target;
+        setForm(prev => ({
+            ...prev,
+            [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+        }));
     }
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        if (
-            !form.nome ||
-            !form.rua ||
-            !form.numero ||
-            !form.bairro ||
-            !form.cidade ||
-            !form.estado ||
-            !form.pais ||
-            !form.telefone ||
-            !form.cep
-        ) {
+        setErro("");
+
+        if (!form.nome || !form.rua || !form.numero || !form.bairro || !form.cidade || !form.estado || !form.pais || !form.telefone) {
             setErro("Preencha todos os campos obrigatórios.");
             return;
         }
-        if (editId) {
-            await atualizarUnidade(editId, form);
-        } else {
-            await criarUnidade(form);
+
+        try {
+            if (editId) {
+                await atualizarUnidade(editId, form);
+            } else {
+                await criarUnidade(form);
+            }
+            setForm(camposIniciais);
+            setEditId(null);
+            setErro("");
+            carregarUnidades();
+            setModalCadastro(false);
+            setModalEditar(false);
+        } catch (error) {
+            console.error("Erro ao processar unidade:", error);
+            setErro("Erro ao processar a unidade. Tente novamente.");
         }
-        setForm(camposIniciais);
-        setEditId(null);
-        setErro("");
-        carregarUnidades();
     }
 
     function handleEditar(unidade: Unidade) {
         setForm({
-            id: unidade.id,
             nome: unidade.nome,
             rua: unidade.rua,
             numero: unidade.numero,
@@ -99,27 +97,38 @@ export default function UnidadesManager() {
             pais: unidade.pais,
             telefone: unidade.telefone,
             cep: unidade.cep ?? "",
+            ativo: unidade.ativo,
         });
         setEditId(unidade.id);
-        setModalEditar(true); // Abre o modal de edição!
+        setModalEditar(true);
         setModalAnimando("editar");
         setTimeout(() => setModalAnimando(null), 100);
     }
 
-    // Função para abrir modal de exclusão
-    function handleExcluir(id: string) {
-        setModalExcluir({ aberto: true, id });
-        setModalAnimando("excluir");
-        setTimeout(() => setModalAnimando(null), 100);
+    async function handleExcluir(id: string) {
+        try {
+            setModalExcluir({ aberto: true, id });
+            setModalAnimando("excluir");
+            setTimeout(() => setModalAnimando(null), 100);
+        } catch (error) {
+            console.error("Erro ao abrir modal de exclusão:", error);
+            setErro("Erro ao tentar excluir a unidade.");
+        }
     }
 
-    // Função para confirmar exclusão
     async function confirmarExcluir() {
         if (modalExcluir.id) {
-            await deletarUnidade(modalExcluir.id);
-            setModalExcluir({ aberto: false, id: null });
-            setModalAnimando(null);
-            carregarUnidades();
+            try {
+                await deletarUnidade(modalExcluir.id);
+                setModalExcluir({ aberto: false, id: null });
+                setModalAnimando(null);
+                setUnidades(unidades.filter((u) => u.id !== modalExcluir.id));
+                setErro("Unidade excluída com sucesso!");
+                setTimeout(() => setErro(null), 3000);
+            } catch (error) {
+                console.error("Erro ao excluir unidade:", error);
+                setErro("Não foi possível excluir a unidade. Tente novamente.");
+            }
         }
     }
 
@@ -128,7 +137,6 @@ export default function UnidadesManager() {
         u.cidade.toLowerCase().includes(busca.toLowerCase())
     );
 
-    // Funções para fechar modais com animação
     function fecharModalCadastroAnimado() {
         setModalAnimando("cadastro");
         setTimeout(() => {
@@ -138,6 +146,7 @@ export default function UnidadesManager() {
             setErro("");
         }, 300);
     }
+
     function fecharModalEditarAnimado() {
         setModalAnimando("editar");
         setTimeout(() => {
@@ -148,6 +157,7 @@ export default function UnidadesManager() {
             setErro("");
         }, 300);
     }
+
     function fecharModalExcluirAnimado() {
         setModalAnimando("excluir");
         setTimeout(() => {
@@ -167,11 +177,40 @@ export default function UnidadesManager() {
         return `(${valor.slice(0, 2)}) ${valor.slice(2, 7)}-${valor.slice(7, 11)}`;
     }
 
+    function aplicarMascaraCEP(valor: string) {
+        valor = valor.replace(/\D/g, "");
+        if (valor.length <= 5) return valor;
+        return `${valor.slice(0, 5)}-${valor.slice(5, 8)}`;
+    }
+
+    async function buscarEnderecoPorCEP(cep: string) {
+        try {
+            const cepLimpo = cep.replace(/\D/g, "");
+            if (cepLimpo.length !== 8) return;
+
+            const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            const data = await response.json();
+
+            if (!data.erro) {
+                setForm(prev => ({
+                    ...prev,
+                    rua: data.logradouro || prev.rua,
+                    bairro: data.bairro || prev.bairro,
+                    cidade: data.localidade || prev.cidade,
+                    estado: data.uf || prev.estado,
+                }));
+            }
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+        }
+    }
+
     return (
         <div className="flex flex-col min-h-[78vh]">
             <div className="flex mb-4 items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="relative w-[400px]">
+                        <h1 className="text-2xl font-bold text-black my-8">Unidades</h1>
                         <input
                             type="text"
                             placeholder="Buscar unidade..."
@@ -191,7 +230,6 @@ export default function UnidadesManager() {
                         )}
                     </div>
                 </div>
-                {/* Botão de cadastro */}
                 <button
                     className="bg-green-600 text-white px-4 py-2 rounded-lg min-w-[180px] transition-colors duration-200 hover:bg-green-700 flex items-center gap-2"
                     onClick={() => {
@@ -202,62 +240,153 @@ export default function UnidadesManager() {
                         setTimeout(() => setModalAnimando(null), 100);
                     }}
                 >
-                     <FaPlus className="h-4 w-4" />Cadastrar Unidade
+                    <FaPlus className="h-4 w-4" />
+                    Cadastrar Unidade
                 </button>
             </div>
-            <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
-                <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200">
-                        <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Endereço</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Telefone</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {unidadesFiltradas.length === 0 ? (
-                        <tr>
-                            <td colSpan={4} className="p-6 text-center text-gray-500">
-                                Nenhuma unidade encontrada.
-                            </td>
-                        </tr>
-                    ) : (
-                        unidadesFiltradas.map((u) => (
-                            <tr
-                                key={u.id}
-                                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                            >
-                                <td className="p-4 align-middle">{u.nome}</td>
-                                <td className="p-4 align-middle">{`${u.rua}, ${u.numero}, ${u.bairro}, ${u.cidade}, ${u.estado}, ${u.pais}`}</td>
-                                <td className="p-4 align-middle">{u.telefone}</td>
-                                <td className="p-4 align-middle">
-                                    <div className="flex gap-2">
-                                        {/* Botão de editar (em cada linha da tabela) */}
-                                        <button
-                                            onClick={() => handleEditar(u)}
-                                            className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
-                                            title="Editar"
-                                        >
-                                            <FaPencilAlt className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleExcluir(u.id!)}
-                                            className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
-                                            title="Excluir"
-                                        >
-                                            <FaTrash className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </td>
+
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Nome
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Endereço
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Telefone
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Ações
+                                </th>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {unidadesFiltradas.filter(u => u.ativo).length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                                        Nenhuma unidade ativa encontrada.
+                                    </td>
+                                </tr>
+                            ) : (
+                                unidadesFiltradas.filter(u => u.ativo).map((u) => (
+                                    <tr key={u.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900">
+                                                {u.nome}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">
+                                                {`${u.rua}, ${u.numero}, ${u.bairro}, ${u.cidade}, ${u.estado}`}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-500">
+                                                {u.telefone}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditar(u)}
+                                                    className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                    title="Editar"
+                                                >
+                                                    <FaPencilAlt className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleExcluir(u.id)}
+                                                    className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                    title="Excluir"
+                                                >
+                                                    <FaTrash className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Seção de Unidades Inativas */}
+            {unidadesFiltradas.filter(u => !u.ativo).length > 0 && (
+                <div className="mt-8">
+                    <h2 className="text-xl font-semibold text-gray-600 mb-4">Unidades Inativas</h2>
+                    <div className="bg-gray-50 rounded-xl shadow-md overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Nome
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Endereço
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Telefone
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Ações
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-gray-50 divide-y divide-gray-200">
+                                    {unidadesFiltradas.filter(u => !u.ativo).map((u) => (
+                                        <tr key={u.id} className="hover:bg-gray-100">
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-600">
+                                                    {u.nome}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-400">
+                                                    {`${u.rua}, ${u.numero}, ${u.bairro}, ${u.cidade}, ${u.estado}`}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-400">
+                                                    {u.telefone}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleEditar(u)}
+                                                        className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                        title="Editar"
+                                                    >
+                                                        <FaPencilAlt className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExcluir(u.id)}
+                                                        className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                        title="Excluir"
+                                                    >
+                                                        <FaTrash className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && typeof window !== "undefined" && document.body &&
                 createPortal(
-                    <div 
+                    <div
                         className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
                         onClick={(e) => {
                             if (e.target === e.currentTarget) {
@@ -299,9 +428,11 @@ export default function UnidadesManager() {
                     </div>,
                     document.body
                 )}
+
+            {/* Modal de Cadastro */}
             {modalCadastro && typeof window !== "undefined" && document.body &&
                 createPortal(
-                    <div 
+                    <div
                         className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
                         onClick={(e) => {
                             if (e.target === e.currentTarget) {
@@ -324,13 +455,7 @@ export default function UnidadesManager() {
                                 ×
                             </button>
                             <h2 className="text-2xl font-bold mb-6 text-center text-black">Cadastrar Unidade</h2>
-                            <form
-                                onSubmit={async (e) => {
-                                    await handleSubmit(e);
-                                    setModalCadastro(false);
-                                }}
-                                className="flex flex-col gap-4"
-                            >
+                            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                                 <div className="relative">
                                     <input
                                         name="nome"
@@ -477,9 +602,14 @@ export default function UnidadesManager() {
                                         id="cep"
                                         placeholder=" "
                                         value={form.cep}
-                                        onChange={handleChange}
+                                        onChange={e => {
+                                            const valor = aplicarMascaraCEP(e.target.value);
+                                            setForm(prev => ({ ...prev, cep: valor }));
+                                            if (valor.replace(/\D/g, "").length === 8) {
+                                                buscarEnderecoPorCEP(valor);
+                                            }
+                                        }}
                                         className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-                                        required
                                     />
                                     <label
                                         htmlFor="cep"
@@ -511,7 +641,22 @@ export default function UnidadesManager() {
                                         Telefone
                                     </label>
                                 </div>
-                                {erro && <span className="text-red-500 text-center">{erro}</span>}
+                                <div className="flex items-center gap-2">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            name="ativo"
+                                            checked={form.ativo}
+                                            onChange={(e) => setForm(prev => ({ ...prev, ativo: e.target.checked }))}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                        <span className="ml-3 text-sm font-medium text-gray-900">Unidade Ativa</span>
+                                    </label>
+                                </div>
+                                {erro && (
+                                    <span className="text-red-500 text-center">{erro}</span>
+                                )}
                                 <div className="flex gap-4 mt-4 justify-center">
                                     <button
                                         type="submit"
@@ -532,9 +677,11 @@ export default function UnidadesManager() {
                     </div>,
                     document.body
                 )}
+
+            {/* Modal de Edição */}
             {modalEditar && typeof window !== "undefined" && document.body &&
                 createPortal(
-                    <div 
+                    <div
                         className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
                         onClick={(e) => {
                             if (e.target === e.currentTarget) {
@@ -557,32 +704,7 @@ export default function UnidadesManager() {
                                 ×
                             </button>
                             <h2 className="text-2xl font-bold mb-6 text-center text-black">Editar Unidade</h2>
-                            <form
-                                onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    if (
-                                        !form.nome ||
-                                        !form.rua ||
-                                        !form.numero ||
-                                        !form.bairro ||
-                                        !form.cidade ||
-                                        !form.estado ||
-                                        !form.pais ||
-                                        !form.telefone ||
-                                        !form.cep
-                                    ) {
-                                        setErro("Preencha todos os campos obrigatórios.");
-                                        return;
-                                    }
-                                    await atualizarUnidade(editId!, form);
-                                    setForm(camposIniciais);
-                                    setEditId(null);
-                                    setErro("");
-                                    setModalEditar(false);
-                                    carregarUnidades();
-                                }}
-                                className="flex flex-col gap-4"
-                            >
+                            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                                 <div className="relative">
                                     <input
                                         name="nome"
@@ -731,7 +853,6 @@ export default function UnidadesManager() {
                                         value={form.cep}
                                         onChange={handleChange}
                                         className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-                                        required
                                     />
                                     <label
                                         htmlFor="cep"
@@ -763,7 +884,22 @@ export default function UnidadesManager() {
                                         Telefone
                                     </label>
                                 </div>
-                                {erro && <span className="text-red-500 text-center">{erro}</span>}
+                                <div className="flex items-center gap-2">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            name="ativo"
+                                            checked={form.ativo}
+                                            onChange={(e) => setForm(prev => ({ ...prev, ativo: e.target.checked }))}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                        <span className="ml-3 text-sm font-medium text-gray-900">Unidade Ativa</span>
+                                    </label>
+                                </div>
+                                {erro && (
+                                    <span className="text-red-500 text-center">{erro}</span>
+                                )}
                                 <div className="flex gap-4 mt-4 justify-center">
                                     <button
                                         type="submit"

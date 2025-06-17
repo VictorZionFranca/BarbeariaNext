@@ -190,6 +190,12 @@ export default function ProdutosManager() {
     }, 300);
   }
 
+  function truncarTexto(texto: string, limite: number) {
+    if (!texto) return "";
+    if (texto.length <= limite) return texto;
+    return texto.slice(0, limite) + "...";
+  }
+
   return (
     <div className="flex flex-col min-h-[78vh]">
       <div className="flex mb-4 items-center justify-between">
@@ -207,7 +213,7 @@ export default function ProdutosManager() {
               <button
                 type="button"
                 onClick={() => setBusca("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                className="absolute right-2 bottom-1 text-gray-400 hover:text-gray-700 text-2xl font-bold"
                 aria-label="Limpar busca"
               >
                 ×
@@ -275,10 +281,10 @@ export default function ProdutosManager() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {p.nome}
+                        {truncarTexto(p.nome, 30)}
                       </div>
-                      <div className="text-sm text-gray-500 line-clamp-2">
-                        {p.descricao}
+                      <div className="text-sm text-gray-500">
+                        {truncarTexto(p.descricao, 50)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -366,10 +372,10 @@ export default function ProdutosManager() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-600">
-                          {p.nome}
+                          {truncarTexto(p.nome, 30)}
                         </div>
-                        <div className="text-sm text-gray-400 line-clamp-2">
-                          {p.descricao}
+                        <div className="text-sm text-gray-400">
+                          {truncarTexto(p.descricao, 50)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -462,7 +468,7 @@ export default function ProdutosManager() {
                   />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
+                  <h3 className="text-lg font-semibold text-gray-900">
                     {modalVisualizar.produto.nome}
                   </h3>
                   <p className="text-gray-600 mt-2">

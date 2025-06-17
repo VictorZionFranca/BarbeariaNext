@@ -169,7 +169,7 @@ export default function FormaPagamentoManager() {
               <button
                 type="button"
                 onClick={() => setBusca("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                className="absolute right-2 bottom-1 text-gray-400 hover:text-gray-700 text-2xl font-bold"
                 aria-label="Limpar busca"
               >
                 ×
