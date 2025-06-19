@@ -224,7 +224,7 @@ export async function atualizarCliente(id: string, cliente: Partial<Cliente>) {
                 };
                 
                 // Remover o campo id dos dados para não duplicar
-                const { id: _, ...dadosSemId } = dadosAtualizados;
+                const { id, ...dadosSemId } = dadosAtualizados;
                 
                 // Criar novo documento com o novo email como ID
                 const novoDocRef = doc(clientesRef, cliente.email);
