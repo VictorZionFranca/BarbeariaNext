@@ -221,15 +221,14 @@ export async function atualizarCliente(id: string, cliente: Partial<Cliente>) {
                 const dadosAtualizados = {
                     ...clienteAtual,
                     ...cliente,
-                    id: cliente.email // Novo ID será o novo email
                 };
                 
                 // Remover o campo id dos dados para não duplicar
-                delete dadosAtualizados.id;
+                const { id: _, ...dadosSemId } = dadosAtualizados;
                 
                 // Criar novo documento com o novo email como ID
                 const novoDocRef = doc(clientesRef, cliente.email);
-                await setDoc(novoDocRef, dadosAtualizados);
+                await setDoc(novoDocRef, dadosSemId);
                 
                 // Excluir completamente o documento antigo
                 const docAntigoRef = doc(clientesRef, id);

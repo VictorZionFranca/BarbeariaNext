@@ -221,15 +221,14 @@ export async function atualizarColaborador(id: string, colaborador: Partial<Cola
                 const dadosAtualizados = {
                     ...colaboradorAtual,
                     ...colaborador,
-                    id: colaborador.email // Novo ID será o novo email
                 };
                 
                 // Remover o campo id dos dados para não duplicar
-                delete dadosAtualizados.id;
+                const { id: _, ...dadosSemId } = dadosAtualizados;
                 
                 // Criar novo documento com o novo email como ID
                 const novoDocRef = doc(colaboradoresRef, colaborador.email);
-                await setDoc(novoDocRef, dadosAtualizados);
+                await setDoc(novoDocRef, dadosSemId);
                 
                 // Excluir completamente o documento antigo
                 const docAntigoRef = doc(colaboradoresRef, id);
