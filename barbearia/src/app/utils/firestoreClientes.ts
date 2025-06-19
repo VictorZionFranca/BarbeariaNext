@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, updateDoc, query, where, Timestamp, setDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, where, Timestamp, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../lib/firebaseConfig";
 
 export interface Cliente {
@@ -45,6 +45,37 @@ async function criarContaAuthViaAPI(email: string, senha: string, nomeCompleto: 
         console.error(`Erro ao criar conta Auth para ${email}:`, error);
         // Não rejeitar a operação principal se falhar a criação da conta Auth
         // A conta pode ser criada posteriormente
+    }
+}
+
+// Função para atualizar email no Authentication via API
+async function atualizarEmailAuthViaAPI(uid: string, newEmail: string) {
+    try {
+        const response = await fetch('/api/auth/update-email', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                uid,
+                newEmail,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            if (response.status === 409) {
+                throw new Error("Email já está em uso por outro usuário");
+            }
+            throw new Error(data.error || 'Erro ao atualizar email');
+        }
+
+        console.log(`Email Auth atualizado para: ${newEmail}`);
+        
+    } catch (error: unknown) {
+        console.error(`Erro ao atualizar email Auth para ${newEmail}:`, error);
+        throw error;
     }
 }
 
@@ -170,8 +201,51 @@ export async function atualizarCliente(id: string, cliente: Partial<Cliente>) {
                 throw new Error("CPF já cadastrado");
             }
         }
+
+        // Se o email foi alterado, precisamos recriar o documento com o novo ID
+        if (cliente.email && cliente.email !== clienteAtual.email) {
+            try {
+                // Buscar o UID do usuário no Authentication usando o email atual
+                const response = await fetch(`/api/auth/get-user-by-email?email=${clienteAtual.email}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.uid) {
+                        await atualizarEmailAuthViaAPI(data.uid, cliente.email);
+                    }
+                }
+
+                // Recriar documento com novo ID (email)
+                const clientesRef = collection(db, "pessoas");
+                
+                // Preparar dados atualizados
+                const dadosAtualizados = {
+                    ...clienteAtual,
+                    ...cliente,
+                    id: cliente.email // Novo ID será o novo email
+                };
+                
+                // Remover o campo id dos dados para não duplicar
+                delete dadosAtualizados.id;
+                
+                // Criar novo documento com o novo email como ID
+                const novoDocRef = doc(clientesRef, cliente.email);
+                await setDoc(novoDocRef, dadosAtualizados);
+                
+                // Excluir completamente o documento antigo
+                const docAntigoRef = doc(clientesRef, id);
+                await deleteDoc(docAntigoRef);
+                
+                console.log(`Documento recriado com novo ID: ${cliente.email}`);
+                return novoDocRef;
+                
+            } catch (error) {
+                console.error('Erro ao recriar documento com novo email:', error);
+                throw new Error('Erro ao atualizar email do cliente');
+            }
+        }
     }
 
+    // Se não alterou o email, atualização normal
     const clienteRef = doc(db, "pessoas", id);
     return await updateDoc(clienteRef, cliente);
 }
