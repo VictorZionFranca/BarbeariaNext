@@ -3,24 +3,19 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../lib/firebaseConfig";
 import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 import "../globals.css";
 import Image from "next/image";
-import { fetchUserNameByUid } from "../utils/firestoreUtils";
-import { signOut } from "firebase/auth";
 
 export default function Login() {
-  const { user, loading, userName } = useAuth(); // Adicione userName aqui
+  const { user, loading, userName, login, authError } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loginLoading, setLoginLoading] = useState(false); // Controla o estado de carregamento do login
-  const [errorVisible, setErrorVisible] = useState(false); // Controla a visibilidade da mensagem de erro
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [errorVisible, setErrorVisible] = useState(false);
 
   useEffect(() => {
     // Só redireciona se estiver autenticado E for admin (userName existe)
@@ -29,62 +24,28 @@ export default function Login() {
     }
   }, [user, userName, loading, router]);
 
-  // Recupera erro do localStorage ao carregar a página
-  useEffect(() => {
-    const loginError = localStorage.getItem("loginError");
-    if (loginError) {
-      setError(loginError);
-      localStorage.removeItem("loginError");
-    }
-  }, []);
-
   useEffect(() => {
     // Se houver um erro, faz a mensagem aparecer e depois desaparecer após 3 segundos
-    if (error) {
+    if (authError) {
       setErrorVisible(true);
       const timer = setTimeout(() => {
         setErrorVisible(false);
-      }, 3000); // 3000 milissegundos = 3 segundos
+      }, 3000);
 
-      // Limpeza do timer quando o componente for desmontado ou o erro mudar
       return () => clearTimeout(timer);
     }
-  }, [error]);
+  }, [authError]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(""); // Limpa qualquer erro anterior
     setLoginLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Verifica se o usuário está na coleção admin
-      const userName = await fetchUserNameByUid(user.uid);
-      if (!userName) {
-        localStorage.setItem("loginError", "Acesso negado! Este sistema é exclusivo para administradores previamente registrados.");
-        await signOut(auth);
-        setLoginLoading(false);
-        return;
-      }
-
-      router.replace("/"); // Redireciona para o dashboard após o login bem-sucedido
-    } catch (err) {
-      const firebaseError = err as { code: string };
-      
-      // Tratamento de erros do Firebase
-      switch (firebaseError.code) {
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-          setError("Email ou senha errados!");
-          break;
-        case "auth/invalid-email":
-          setError("Email inválido.");
-          break;
-        default:
-          setError("Erro ao fazer login. Tente novamente.");
-      }
+      await login(email, password);
+      // O redirecionamento é feito automaticamente pelo contexto
+    } catch (error) {
+      // O erro já é tratado pelo contexto
+      console.error("Erro no login:", error);
     } finally {
       setLoginLoading(false);
     }
@@ -134,7 +95,7 @@ export default function Login() {
               placeholder="Digite seu email"
               required
               disabled={loginLoading}
-              autoComplete="email" // Adicionando autoComplete para email
+              autoComplete="email"
             />
           </div>
           <div>
@@ -155,7 +116,7 @@ export default function Login() {
                 placeholder="Digite sua senha"
                 required
                 disabled={loginLoading}
-                autoComplete="current-password" // Adicionando autoComplete para senha
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -181,7 +142,7 @@ export default function Login() {
           className={`bg-red-200 text-red-600 p-2 rounded mt-20 text-center transition-opacity duration-500 
     ease-in-out ${errorVisible ? "opacity-100" : "opacity-0"}`}
         >
-          {error}
+          {authError}
         </div>
       </div>
     </div>
