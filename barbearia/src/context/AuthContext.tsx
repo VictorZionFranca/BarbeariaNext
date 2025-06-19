@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { onAuthStateChanged, User, setPersistence, browserLocalPersistence, signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth } from "../lib/firebaseConfig";
@@ -62,16 +62,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUserName(name);
       
       router.replace("/");
-    } catch (error: any) {
-      console.error("Erro no login:", error);
-      setAuthError(error.message || "Erro ao fazer login");
-      throw error;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Erro no login:", error);
+        setAuthError(error.message || "Erro ao fazer login");
+        throw error;
+      } else {
+        setAuthError("Erro ao fazer login");
+        throw error;
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       // Limpar dados locais
       localStorage.removeItem('authToken');
@@ -86,7 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error("Erro no logout:", error);
     }
-  };
+  }, [router]);
 
   const refreshAuth = async () => {
     setLoading(true);
@@ -158,7 +163,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, logout]);
 
   return (
     <AuthContext.Provider value={{ user, userName, loading, authError, refreshAuth, login, logout }}>
