@@ -1,31 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-
-// Inicializar Firebase Admin SDK
-if (!getApps().length) {
-  try {
-    console.log('Inicializando Firebase Admin SDK...');
-    console.log('Project ID:', process.env.FIREBASE_PROJECT_ID);
-    console.log('Client Email:', process.env.FIREBASE_CLIENT_EMAIL);
-    console.log('Private Key exists:', !!process.env.FIREBASE_PRIVATE_KEY);
-    
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
-      throw new Error('Variáveis de ambiente do Firebase Admin SDK não configuradas');
-    }
-
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      }),
-    });
-    console.log('Firebase Admin SDK inicializado com sucesso');
-  } catch (error) {
-    console.error('Erro ao inicializar Firebase Admin SDK:', error);
-  }
-}
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../../../lib/firebaseConfig';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,38 +17,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se o Firebase Admin está inicializado
-    if (getApps().length === 0) {
-      console.error('Firebase Admin SDK não inicializado');
-      return NextResponse.json(
-        { error: 'Serviço não disponível' },
-        { status: 500 }
-      );
-    }
-
     console.log('Criando usuário no Firebase Auth...');
-    // Criar usuário no Firebase Auth usando Admin SDK
-    const userRecord = await getAuth().createUser({
-      email,
-      password,
-      displayName,
-    });
+    
+    // Criar usuário no Firebase Auth usando SDK do cliente
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
 
-    console.log('Usuário criado com sucesso:', userRecord.uid);
+    console.log('Usuário criado com sucesso:', user.uid);
     return NextResponse.json({
       success: true,
-      uid: userRecord.uid,
+      uid: user.uid,
       message: 'Conta criada com sucesso'
     });
 
   } catch (error: unknown) {
     console.error('Erro ao criar conta:', error);
     
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'auth/email-already-exists') {
-      return NextResponse.json(
-        { error: 'Email já cadastrado' },
-        { status: 409 }
-      );
+    if (error && typeof error === 'object' && 'code' in error) {
+      if (error.code === 'auth/email-already-in-use') {
+        return NextResponse.json(
+          { error: 'Email já cadastrado' },
+          { status: 409 }
+        );
+      }
+      if (error.code === 'auth/weak-password') {
+        return NextResponse.json(
+          { error: 'Senha muito fraca' },
+          { status: 400 }
+        );
+      }
+      if (error.code === 'auth/invalid-email') {
+        return NextResponse.json(
+          { error: 'Email inválido' },
+          { status: 400 }
+        );
+      }
     }
 
     return NextResponse.json(

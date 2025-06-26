@@ -1,5 +1,6 @@
 import { collection, getDocs, doc, updateDoc, query, where, Timestamp, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../lib/firebaseConfig";
+import { sincronizarDadosColaborador } from "./firestoreColaboradoresInformacoes";
 
 export interface Colaborador {
     id?: string;
@@ -12,6 +13,7 @@ export interface Colaborador {
     telefone: string;
     tipoPessoa: number;
     senhaTemporaria?: string;
+    unidadeNome?: string;
 }
 
 // Função para criar conta no Authentication via API
@@ -246,7 +248,17 @@ export async function atualizarColaborador(id: string, colaborador: Partial<Cola
 
     // Se não alterou o email, atualização normal
     const colaboradorRef = doc(db, "pessoas", id);
-    return await updateDoc(colaboradorRef, colaborador);
+    await updateDoc(colaboradorRef, colaborador);
+    
+    // Sincronizar dados nas informações profissionais
+    try {
+        await sincronizarDadosColaborador(id);
+    } catch (error) {
+        console.error("Erro ao sincronizar informações profissionais:", error);
+        // Não falhar a operação principal se a sincronização falhar
+    }
+    
+    return colaboradorRef;
 }
 
 // Função para gerar senha temporária segura
@@ -286,4 +298,18 @@ export async function buscarColaboradorPorCPF(cpf: string) {
         id: doc.id,
         ...doc.data()
     })) as Colaborador[];
+}
+
+// Atualizar apenas a unidade de um colaborador
+export async function atualizarUnidadeColaborador(pessoaId: string, unidadeNome: string): Promise<void> {
+    try {
+        const colaboradorRef = doc(db, "pessoas", pessoaId);
+        await updateDoc(colaboradorRef, {
+            unidadeNome: unidadeNome
+        });
+        console.log(`Unidade atualizada para: ${unidadeNome} no colaborador: ${pessoaId}`);
+    } catch (error) {
+        console.error("Erro ao atualizar unidade do colaborador:", error);
+        throw error;
+    }
 } 
