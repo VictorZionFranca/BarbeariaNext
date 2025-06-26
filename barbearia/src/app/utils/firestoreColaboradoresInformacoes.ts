@@ -164,8 +164,9 @@ export async function atualizarColaboradorInformacoes(
                         historico.ferias.push({ inicio: periodoFeriasInicio, fim: periodoFeriasFim });
                     }
                 }
-                dados.periodoFeriasInicio = undefined;
-                dados.periodoFeriasFim = undefined;
+                // Sempre remove os campos de férias após o término
+                delete dados.periodoFeriasInicio;
+                delete dados.periodoFeriasFim;
             }
             // Se existirem folgas e a data de admissão for antiga, mover para histórico (exemplo: se dataAdmissao for há mais de 1 ano)
             const dataAdmissao = safeToDate(data.dataAdmissao);

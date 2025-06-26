@@ -72,9 +72,10 @@ export default function ColaboradoresManager() {
                 }
                 if (!isNaN(fim.getTime()) && fim < hoje) {
                     // Atualizar no Firestore (isso já cuida do histórico)
+                    // Enviar os valores atuais para garantir que o histórico seja atualizado corretamente
                     await atualizarColaboradorInformacoes(info.pessoaId, {
-                        periodoFeriasInicio: undefined,
-                        periodoFeriasFim: undefined
+                        periodoFeriasInicio: info.periodoFeriasInicio,
+                        periodoFeriasFim: info.periodoFeriasFim
                     });
                 }
             }
@@ -352,8 +353,9 @@ export default function ColaboradoresManager() {
         try {
             // Usar criarDataLocal para garantir meia-noite no horário local
             const dataAdmissao = criarDataLocal(formInfo.dataAdmissao);
-            const periodoFeriasInicio = criarDataLocal(formInfo.periodoFeriasInicio);
-            const periodoFeriasFim = criarDataLocal(formInfo.periodoFeriasFim);
+            // Se o campo estiver vazio, será undefined
+            const periodoFeriasInicio = formInfo.periodoFeriasInicio ? criarDataLocal(formInfo.periodoFeriasInicio) : undefined;
+            const periodoFeriasFim = formInfo.periodoFeriasFim ? criarDataLocal(formInfo.periodoFeriasFim) : undefined;
 
             const dadosAtualizados: {
                 dataAdmissao?: Date;
@@ -367,10 +369,20 @@ export default function ColaboradoresManager() {
             };
 
             if (dataAdmissao) dadosAtualizados.dataAdmissao = dataAdmissao;
-            if (periodoFeriasInicio) dadosAtualizados.periodoFeriasInicio = periodoFeriasInicio;
-            if (periodoFeriasFim) dadosAtualizados.periodoFeriasFim = periodoFeriasFim;
+            // Se o campo está vazio, envia undefined explicitamente para limpar no Firebase
+            dadosAtualizados.periodoFeriasInicio = periodoFeriasInicio;
+            dadosAtualizados.periodoFeriasFim = periodoFeriasFim;
 
             await atualizarColaboradorInformacoes(colaboradorSelecionado.id!, dadosAtualizados);
+
+            // --- AJUSTE: Limpar férias vencidas imediatamente se necessário ---
+            if (periodoFeriasFim && periodoFeriasFim < new Date()) {
+                await atualizarColaboradorInformacoes(colaboradorSelecionado.id!, {
+                    periodoFeriasInicio: periodoFeriasInicio,
+                    periodoFeriasFim: periodoFeriasFim
+                });
+            }
+            // --- FIM DO AJUSTE ---
 
             setFormInfo(camposInfoIniciais);
             setColaboradorSelecionado(null);
@@ -582,7 +594,7 @@ export default function ColaboradoresManager() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleEditar(c)}
-                                                        className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors duration-200"
+                                                        className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
                                                         title="Editar"
                                                     >
                                                         <FaPencilAlt className="h-5 w-5" />
