@@ -2,7 +2,6 @@
 import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
 import { 
     listarColaboradoresInformacoes, 
-    buscarColaboradorInformacoes,
     atualizarColaboradorInformacoes,
     deletarColaboradorInformacoes,
     ColaboradorInformacoes,
@@ -10,7 +9,7 @@ import {
 } from "../utils/firestoreColaboradoresInformacoes";
 import { listarColaboradores, Colaborador } from "../utils/firestoreColaboradores";
 import { listarUnidades, Unidade } from "../utils/firestoreUnidades";
-import { FaPencilAlt, FaTrash, FaPlus, FaCalendarAlt } from "react-icons/fa";
+import { FaPencilAlt, FaTrash } from "react-icons/fa";
 import { createPortal } from "react-dom";
 
 const camposIniciais = {
