@@ -14,6 +14,10 @@ export interface ColaboradorInformacoes {
     periodoFeriasFim?: Date; // Fim do período de férias
     criadoEm: Timestamp;
     atualizadoEm: Timestamp;
+    historico?: {
+        folgas: { dias: string[]; data: Date }[];
+        ferias: { inicio: Date; fim: Date }[];
+    };
 }
 
 // Função para buscar informações completas de um colaborador
@@ -110,12 +114,70 @@ export async function criarColaboradorInformacoes(
     }
 }
 
+// Função utilitária para converter valores em datas válidas
+function safeToDate(val: unknown): Date | undefined {
+    if (!val) return undefined;
+    if (typeof val === 'object' && typeof (val as { toDate: () => Date }).toDate === 'function') return (val as { toDate: () => Date }).toDate();
+    const d = new Date(val as string | number | Date);
+    return isNaN(d.getTime()) ? undefined : d;
+}
+
+// Função utilitária para verificar se é Timestamp do Firestore
+function isFirestoreTimestamp(obj: unknown): obj is { toDate: () => Date } {
+    return !!obj && typeof obj === 'object' && typeof (obj as { toDate: () => Date }).toDate === 'function';
+}
+
 // Atualizar informações profissionais de um colaborador
 export async function atualizarColaboradorInformacoes(
     pessoaId: string, 
     dados: Partial<Omit<ColaboradorInformacoes, "id" | "pessoaId" | "criadoEm">>
 ): Promise<void> {
     try {
+        // Buscar informações atuais
+        const docRef = doc(db, "colaboradoresInformacoes", pessoaId);
+        const docSnap = await getDoc(docRef);
+        let historico: {
+            folgas: { dias: string[]; data: Date }[];
+            ferias: { inicio: Date; fim: Date }[];
+        } = { folgas: [], ferias: [] };
+        if (docSnap.exists()) {
+            const data = docSnap.data() as ColaboradorInformacoes;
+            historico = (data.historico as {
+                folgas: { dias: string[]; data: Date }[];
+                ferias: { inicio: Date; fim: Date }[];
+            }) || { folgas: [], ferias: [] };
+            // Se as férias acabaram, mover para histórico
+            const periodoFeriasInicio = safeToDate(data.periodoFeriasInicio);
+            const periodoFeriasFim = safeToDate(data.periodoFeriasFim);
+            if (periodoFeriasFim && periodoFeriasFim < new Date()) {
+                if (periodoFeriasInicio && periodoFeriasFim) {
+                    // Só adiciona ao histórico se ainda não estiver lá
+                    const jaNoHistorico = historico.ferias.some(f => {
+                        const inicioHist = isFirestoreTimestamp(f.inicio) ? f.inicio.toDate() : new Date(f.inicio);
+                        const fimHist = isFirestoreTimestamp(f.fim) ? f.fim.toDate() : new Date(f.fim);
+                        return (
+                            inicioHist.getTime() === periodoFeriasInicio.getTime() &&
+                            fimHist.getTime() === periodoFeriasFim.getTime()
+                        );
+                    });
+                    if (!jaNoHistorico) {
+                        historico.ferias.push({ inicio: periodoFeriasInicio, fim: periodoFeriasFim });
+                    }
+                }
+                dados.periodoFeriasInicio = undefined;
+                dados.periodoFeriasFim = undefined;
+            }
+            // Se existirem folgas e a data de admissão for antiga, mover para histórico (exemplo: se dataAdmissao for há mais de 1 ano)
+            const dataAdmissao = safeToDate(data.dataAdmissao);
+            if (data.folgas && data.folgas.length > 0 && dataAdmissao) {
+                const umAnoAtras = new Date();
+                umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+                if (dataAdmissao < umAnoAtras) {
+                    historico.folgas.push({ dias: data.folgas, data: dataAdmissao });
+                    dados.folgas = [];
+                }
+            }
+        }
         // Se estiver atualizando dados que dependem de outras coleções, buscar novamente
         if (dados.nome || dados.email || dados.unidadeNome) {
             const informacoes = await buscarInformacoesCompletas(pessoaId);
@@ -123,10 +185,13 @@ export async function atualizarColaboradorInformacoes(
             dados.email = informacoes.email;
             dados.unidadeNome = dados.unidadeNome || informacoes.unidadeNome;
         }
-
-        // Criar objeto com apenas os campos que têm valores válidos
-        const dadosAtualizados: {
+        // Definir tipo explícito para os campos possíveis
+        type DadosAtualizados = {
             atualizadoEm: Timestamp;
+            historico: {
+                folgas: { dias: string[]; data: Date }[];
+                ferias: { inicio: Date; fim: Date }[];
+            };
             dataAdmissao?: Date;
             folgas?: string[];
             periodoFeriasInicio?: Date;
@@ -134,23 +199,20 @@ export async function atualizarColaboradorInformacoes(
             unidadeNome?: string;
             nome?: string;
             email?: string;
-        } = {
-            atualizadoEm: Timestamp.now()
         };
-
-        // Adicionar campos apenas se não forem undefined
-        if (dados.dataAdmissao !== undefined) {
-            dadosAtualizados.dataAdmissao = dados.dataAdmissao;
-        }
+        const dadosAtualizados: DadosAtualizados = {
+            atualizadoEm: Timestamp.now(),
+            historico
+        };
+        const dataAdmissao = safeToDate(dados.dataAdmissao);
+        if (dataAdmissao) dadosAtualizados.dataAdmissao = dataAdmissao;
         if (dados.folgas !== undefined) {
             dadosAtualizados.folgas = dados.folgas;
         }
-        if (dados.periodoFeriasInicio !== undefined) {
-            dadosAtualizados.periodoFeriasInicio = dados.periodoFeriasInicio;
-        }
-        if (dados.periodoFeriasFim !== undefined) {
-            dadosAtualizados.periodoFeriasFim = dados.periodoFeriasFim;
-        }
+        const periodoFeriasInicio = safeToDate(dados.periodoFeriasInicio);
+        if (periodoFeriasInicio) dadosAtualizados.periodoFeriasInicio = periodoFeriasInicio;
+        const periodoFeriasFim = safeToDate(dados.periodoFeriasFim);
+        if (periodoFeriasFim) dadosAtualizados.periodoFeriasFim = periodoFeriasFim;
         if (dados.unidadeNome !== undefined) {
             dadosAtualizados.unidadeNome = dados.unidadeNome;
         }
@@ -160,10 +222,7 @@ export async function atualizarColaboradorInformacoes(
         if (dados.email !== undefined) {
             dadosAtualizados.email = dados.email;
         }
-
-        const docRef = doc(db, "colaboradoresInformacoes", pessoaId);
         await updateDoc(docRef, dadosAtualizados);
-        
         // Se a unidade foi alterada, também atualizar na tabela pessoas
         if (dados.unidadeNome !== undefined) {
             try {
@@ -171,12 +230,9 @@ export async function atualizarColaboradorInformacoes(
                 await atualizarUnidadeColaborador(pessoaId, dados.unidadeNome);
             } catch (error) {
                 console.error("Erro ao atualizar unidade na tabela pessoas:", error);
-                // Não falhar a operação principal se a atualização da unidade falhar
             }
         }
-        
         console.log(`Informações profissionais atualizadas para: ${pessoaId}`);
-        
     } catch (error) {
         console.error("Erro ao atualizar informações profissionais:", error);
         throw error;

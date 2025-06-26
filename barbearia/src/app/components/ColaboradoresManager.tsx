@@ -24,6 +24,17 @@ const camposInfoIniciais = {
     unidadeNome: "",
 };
 
+function isFirestoreTimestamp(obj: unknown): obj is { toDate: () => Date } {
+    return !!obj && typeof obj === 'object' && typeof (obj as { toDate: () => Date }).toDate === 'function';
+}
+
+// Função utilitária para criar data no horário local do Brasil a partir de yyyy-mm-dd
+function criarDataLocal(dateStr: string): Date | undefined {
+    if (!dateStr) return undefined;
+    const [ano, mes, dia] = dateStr.split('-').map(Number);
+    return new Date(ano, mes - 1, dia, 0, 0, 0);
+}
+
 export default function ColaboradoresManager() {
     const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
     const [colaboradoresInfo, setColaboradoresInfo] = useState<ColaboradorInformacoes[]>([]);
@@ -48,15 +59,45 @@ export default function ColaboradoresManager() {
     const [modalAnimando, setModalAnimando] = useState<"cadastro" | "editar" | "excluir" | "info" | null>(null);
     const [diasSemana] = useState(getDiasSemana());
 
+    // Função para limpar férias vencidas e atualizar histórico
+    async function limparFeriasVencidas(colaboradoresInfo: ColaboradorInformacoes[]) {
+        const hoje = new Date();
+        for (const info of colaboradoresInfo) {
+            if (info.periodoFeriasFim) {
+                let fim: Date;
+                if (isFirestoreTimestamp(info.periodoFeriasFim)) {
+                    fim = info.periodoFeriasFim.toDate();
+                } else {
+                    fim = new Date(info.periodoFeriasFim);
+                }
+                if (!isNaN(fim.getTime()) && fim < hoje) {
+                    // Atualizar no Firestore (isso já cuida do histórico)
+                    await atualizarColaboradorInformacoes(info.pessoaId, {
+                        periodoFeriasInicio: undefined,
+                        periodoFeriasFim: undefined
+                    });
+                }
+            }
+        }
+    }
+
+    // Modificar carregarColaboradores para limpar férias vencidas antes de setar o estado
     const carregarColaboradores = useCallback(async () => {
         try {
-            const [lista, listaInfo, listaUnidades] = await Promise.all([
+            const [, listaInfo, listaUnidades] = await Promise.all([
                 listarColaboradores(),
                 listarColaboradoresInformacoes(),
                 listarUnidades()
             ]);
-            setColaboradores(lista);
-            setColaboradoresInfo(listaInfo);
+            // Limpar férias vencidas antes de setar o estado
+            await limparFeriasVencidas(listaInfo);
+            // Buscar novamente após possíveis atualizações
+            const [listaAtualizada, listaInfoAtualizada] = await Promise.all([
+                listarColaboradores(),
+                listarColaboradoresInformacoes()
+            ]);
+            setColaboradores(listaAtualizada);
+            setColaboradoresInfo(listaInfoAtualizada);
             setUnidades(listaUnidades);
         } catch (error) {
             console.error("Erro ao carregar colaboradores:", error);
@@ -142,6 +183,10 @@ export default function ColaboradoresManager() {
         try {
             if (editId) {
                 await atualizarColaborador(editId, form);
+                // Sincronizar unidade também na coleção colaboradoresInformacoes
+                if (form.unidadeNome) {
+                    await atualizarColaboradorInformacoes(editId, { unidadeNome: form.unidadeNome });
+                }
             } else {
                 await criarColaborador(form);
                 // Após criar colaborador, criar informações profissionais
@@ -149,8 +194,8 @@ export default function ColaboradoresManager() {
                     const dataAdmissao = new Date(); // Data atual
                     await criarColaboradorInformacoes(form.email, dataAdmissao, [], undefined, undefined, form.unidadeNome);
                 }
-                carregarColaboradores();
             }
+            await carregarColaboradores();
             setForm(camposIniciais);
             setEditId(null);
             setErro("");
@@ -305,28 +350,25 @@ export default function ColaboradoresManager() {
         }
 
         try {
-            const dataAdmissao = new Date(formInfo.dataAdmissao);
-            
-            // Preparar dados apenas com campos que têm valores
+            // Usar criarDataLocal para garantir meia-noite no horário local
+            const dataAdmissao = criarDataLocal(formInfo.dataAdmissao);
+            const periodoFeriasInicio = criarDataLocal(formInfo.periodoFeriasInicio);
+            const periodoFeriasFim = criarDataLocal(formInfo.periodoFeriasFim);
+
             const dadosAtualizados: {
-                dataAdmissao: Date;
+                dataAdmissao?: Date;
                 folgas: string[];
                 unidadeNome: string;
                 periodoFeriasInicio?: Date;
                 periodoFeriasFim?: Date;
             } = {
-                dataAdmissao,
                 folgas: formInfo.folgas,
                 unidadeNome: formInfo.unidadeNome,
             };
 
-            // Adicionar campos opcionais apenas se tiverem valores
-            if (formInfo.periodoFeriasInicio) {
-                dadosAtualizados.periodoFeriasInicio = new Date(formInfo.periodoFeriasInicio);
-            }
-            if (formInfo.periodoFeriasFim) {
-                dadosAtualizados.periodoFeriasFim = new Date(formInfo.periodoFeriasFim);
-            }
+            if (dataAdmissao) dadosAtualizados.dataAdmissao = dataAdmissao;
+            if (periodoFeriasInicio) dadosAtualizados.periodoFeriasInicio = periodoFeriasInicio;
+            if (periodoFeriasFim) dadosAtualizados.periodoFeriasFim = periodoFeriasFim;
 
             await atualizarColaboradorInformacoes(colaboradorSelecionado.id!, dadosAtualizados);
 
@@ -343,28 +385,76 @@ export default function ColaboradoresManager() {
 
     async function handleVerInfo(colaborador: Colaborador) {
         setColaboradorSelecionado(colaborador);
-        
         try {
             // Buscar informações existentes
-            const info = await buscarColaboradorInformacoes(colaborador.id!);
+            let info = await buscarColaboradorInformacoes(colaborador.id!);
+            let precisaAtualizar = false;
+            const atualizarObj: Record<string, unknown> = {};
+            // Verificar férias vencidas
+            if (info && info.periodoFeriasFim) {
+                let dFim;
+                if (isFirestoreTimestamp(info.periodoFeriasFim)) {
+                    dFim = info.periodoFeriasFim.toDate();
+                } else {
+                    dFim = new Date(info.periodoFeriasFim);
+                }
+                if (!isNaN(dFim.getTime()) && dFim < new Date()) {
+                    precisaAtualizar = true;
+                    atualizarObj.periodoFeriasInicio = undefined;
+                    atualizarObj.periodoFeriasFim = undefined;
+                }
+            }
+            // Verificar folgas antigas (data de admissão há mais de 1 ano)
+            if (info && info.folgas && info.folgas.length > 0 && info.dataAdmissao) {
+                let dAdmissao;
+                if (isFirestoreTimestamp(info.dataAdmissao)) {
+                    dAdmissao = info.dataAdmissao.toDate();
+                } else {
+                    dAdmissao = new Date(info.dataAdmissao);
+                }
+                const umAnoAtras = new Date();
+                umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+                if (!isNaN(dAdmissao.getTime()) && dAdmissao < umAnoAtras) {
+                    precisaAtualizar = true;
+                    atualizarObj.folgas = [];
+                }
+            }
+            // Se precisar atualizar, faz a atualização e busca novamente
+            if (info && precisaAtualizar) {
+                await atualizarColaboradorInformacoes(colaborador.id!, atualizarObj);
+                info = await buscarColaboradorInformacoes(colaborador.id!);
+            }
+            // Formatar data de admissão para dd/mm/aaaa
+            let dataAdmissaoStr = "";
+            if (info && info.dataAdmissao) {
+                let d;
+                if (isFirestoreTimestamp(info.dataAdmissao)) {
+                    d = info.dataAdmissao.toDate();
+                } else {
+                    d = new Date(info.dataAdmissao);
+                }
+                if (!isNaN(d.getTime())) {
+                    const dia = String(d.getDate()).padStart(2, '0');
+                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                    const ano = d.getFullYear();
+                    dataAdmissaoStr = `${dia}/${mes}/${ano}`;
+                }
+            }
             if (info) {
                 setFormInfo({
-                    dataAdmissao: info.dataAdmissao instanceof Date 
-                        ? info.dataAdmissao.toISOString().split('T')[0]
-                        : new Date(info.dataAdmissao).toISOString().split('T')[0],
+                    dataAdmissao: dataAdmissaoStr,
                     folgas: info.folgas || [],
-                    periodoFeriasInicio: info.periodoFeriasInicio 
-                        ? new Date(info.periodoFeriasInicio).toISOString().split('T')[0]
+                    periodoFeriasInicio: info.periodoFeriasInicio
+                        ? (() => { const d = isFirestoreTimestamp(info.periodoFeriasInicio) ? info.periodoFeriasInicio.toDate() : new Date(info.periodoFeriasInicio); return isNaN(d.getTime()) ? "" : d.toISOString().split('T')[0]; })()
                         : "",
                     periodoFeriasFim: info.periodoFeriasFim
-                        ? new Date(info.periodoFeriasFim).toISOString().split('T')[0]
+                        ? (() => { const d = isFirestoreTimestamp(info.periodoFeriasFim) ? info.periodoFeriasFim.toDate() : new Date(info.periodoFeriasFim); return isNaN(d.getTime()) ? "" : d.toISOString().split('T')[0]; })()
                         : "",
                     unidadeNome: info.unidadeNome || "",
                 });
             } else {
                 setFormInfo(camposInfoIniciais);
             }
-            
             setModalInfo(true);
             setModalAnimando("info");
             setTimeout(() => setModalAnimando(null), 100);
@@ -373,6 +463,31 @@ export default function ColaboradoresManager() {
             setErroInfo("Erro ao carregar informações do colaborador");
         }
     }
+
+    // Função para verificar se colaborador está de férias
+    function colaboradorEstaDeFerias(info: ColaboradorInformacoes): boolean {
+        if (!info.periodoFeriasInicio || !info.periodoFeriasFim) return false;
+        let inicio: Date, fim: Date;
+        if (isFirestoreTimestamp(info.periodoFeriasInicio)) {
+            inicio = info.periodoFeriasInicio.toDate();
+        } else {
+            inicio = new Date(info.periodoFeriasInicio);
+        }
+        if (isFirestoreTimestamp(info.periodoFeriasFim)) {
+            fim = info.periodoFeriasFim.toDate();
+        } else {
+            fim = new Date(info.periodoFeriasFim);
+        }
+        const hoje = new Date();
+        // Zerar horas para comparar só a data
+        hoje.setHours(0,0,0,0);
+        inicio.setHours(0,0,0,0);
+        fim.setHours(0,0,0,0);
+        return hoje >= inicio && hoje <= fim;
+    }
+
+    // Lista de colaboradores de férias
+    const colaboradoresFerias = colaboradoresInfo.filter(colab => colaboradorEstaDeFerias(colab));
 
     return (
         <div className="flex flex-col min-h-[78vh]">
@@ -390,7 +505,7 @@ export default function ColaboradoresManager() {
                             <button
                                 type="button"
                                 onClick={() => setBusca("")}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                                className="absolute right-2 bottom-1 text-gray-400 hover:text-gray-700 text-2xl font-bold"
                                 aria-label="Limpar busca"
                             >
                                 ×
@@ -411,71 +526,139 @@ export default function ColaboradoresManager() {
                     <FaPlus className="h-4 w-4" />Cadastrar Colaborador
                 </button>
             </div>
-            <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
-                <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200">
-                        <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">CPF</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Email</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Telefone</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Unidade</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {colaboradoresFiltrados.length === 0 ? (
-                        <tr>
-                            <td colSpan={6} className="p-6 text-center text-gray-500">
-                                Nenhum colaborador encontrado.
-                            </td>
-                        </tr>
-                    ) : (
-                        colaboradoresFiltrados.map((c) => {
-                            // Buscar informações profissionais do colaborador
-                            const info = colaboradoresInfo.find(i => i.pessoaId === c.id);
-                            const unidade = info?.unidadeNome || "Não definida";
-                            
-                            return (
-                                <tr
-                                    key={c.id}
-                                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                                >
-                                    <td className="p-4 align-middle">{c.nomeCompleto}</td>
-                                    <td className="p-4 align-middle">{c.cpf}</td>
-                                    <td className="p-4 align-middle">{c.email}</td>
-                                    <td className="p-4 align-middle">{c.telefone}</td>
-                                    <td className="p-4 align-middle">{unidade}</td>
-                                    <td className="p-4 align-middle">
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleVerInfo(c)}
-                                                className="bg-green-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-green-700"
-                                                title="Informações Profissionais"
-                                            >
-                                                <FaInfoCircle className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleEditar(c)}
-                                                className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
-                                                title="Editar"
-                                            >
-                                                <FaPencilAlt className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleExcluir(c.id!)}
-                                                className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
-                                                title="Excluir"
-                                            >
-                                                <FaTrash className="h-4 w-4" />
-                                            </button>
-                                        </div>
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-200">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidade</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {colaboradoresFiltrados.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                                        Nenhum colaborador encontrado.
                                     </td>
                                 </tr>
-                            );
-                        })
-                    )}
-                </tbody>
-            </table>
+                            ) : (
+                                colaboradoresFiltrados.map((c) => {
+                                    // Buscar informações profissionais do colaborador
+                                    const info = colaboradoresInfo.find(i => i.pessoaId === c.id);
+                                    const unidade = info?.unidadeNome || "Não definida";
+                                    return (
+                                        <tr
+                                            key={c.id}
+                                            className="hover:bg-gray-50"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-900">{c.nomeCompleto}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">{c.cpf}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">{c.email}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">{c.telefone}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">{unidade}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleVerInfo(c)}
+                                                        className="p-2 bg-green-100 text-green-600 hover:bg-green-200 rounded-lg transition-colors duration-200"
+                                                        title="Informações Profissionais"
+                                                    >
+                                                        <FaInfoCircle className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEditar(c)}
+                                                        className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors duration-200"
+                                                        title="Editar"
+                                                    >
+                                                        <FaPencilAlt className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExcluir(c.id!)}
+                                                        className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                        title="Excluir"
+                                                    >
+                                                        <FaTrash className="h-5 w-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Tabela de colaboradores de férias */}
+            {colaboradoresFerias.length > 0 && (
+                <div className="mt-8">
+                    <div className="flex items-center gap-2 mb-4">
+                        <h1 className="text-2xl font-bold text-black">Colaboradores de Férias</h1>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-200">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidade</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Início</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fim</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {colaboradoresFerias.map((info) => (
+                                        <tr key={info.pessoaId} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-900">{info.nome}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">{info.unidadeNome}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-500">
+                                                {(() => {
+                                                    const raw = info.periodoFeriasInicio;
+                                                    let d: Date | undefined;
+                                                    if (raw) {
+                                                        d = isFirestoreTimestamp(raw) ? raw.toDate() : new Date(raw);
+                                                    }
+                                                    return d && !isNaN(d.getTime()) ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}` : "-";
+                                                })()}
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-500">
+                                                {(() => {
+                                                    const raw = info.periodoFeriasFim;
+                                                    let d: Date | undefined;
+                                                    if (raw) {
+                                                        d = isFirestoreTimestamp(raw) ? raw.toDate() : new Date(raw);
+                                                    }
+                                                    return d && !isNaN(d.getTime()) ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}` : "-";
+                                                })()}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && typeof window !== "undefined" && document.body &&
@@ -957,23 +1140,14 @@ export default function ColaboradoresManager() {
                                 onSubmit={handleInfoSubmit}
                                 className="flex flex-col gap-4"
                             >
+                                {/* Data de Admissão apenas leitura */}
                                 <div className="relative">
-                                    <input
-                                        name="dataAdmissao"
-                                        id="dataAdmissao"
-                                        type="date"
-                                        placeholder=" "
-                                        value={formInfo.dataAdmissao}
-                                        onChange={handleChangeInfo}
-                                        className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-                                        required
-                                    />
-                                    <label
-                                        htmlFor="dataAdmissao"
-                                        className="absolute left-3 -top-3 text-xs text-black bg-white px-1"
-                                    >
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Data de Admissão
                                     </label>
+                                    <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                                        {formInfo.dataAdmissao ? formInfo.dataAdmissao : <span className="text-gray-400 italic">vazio</span>}
+                                    </div>
                                 </div>
 
                                 <div className="relative">
@@ -1016,6 +1190,9 @@ export default function ColaboradoresManager() {
                                                 <span className="text-sm text-gray-700">{dia}</span>
                                             </label>
                                         ))}
+                                        {formInfo.folgas.length === 0 && (
+                                            <span className="col-span-2 text-gray-400 italic">vazio</span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1036,6 +1213,9 @@ export default function ColaboradoresManager() {
                                         >
                                             Início das Férias
                                         </label>
+                                        {!formInfo.periodoFeriasInicio && (
+                                            <span className="text-gray-400 italic">vazio</span>
+                                        )}
                                     </div>
                                     <div className="relative">
                                         <input
@@ -1053,6 +1233,9 @@ export default function ColaboradoresManager() {
                                         >
                                             Fim das Férias
                                         </label>
+                                        {!formInfo.periodoFeriasFim && (
+                                            <span className="text-gray-400 italic">vazio</span>
+                                        )}
                                     </div>
                                 </div>
 

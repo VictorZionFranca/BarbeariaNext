@@ -264,7 +264,7 @@ export default function ClientesManager() {
             </div>
             <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
                 <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200">
+                    <tr className="bg-gray-200 border-b border-gray-200">
                         <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
                         <th className="p-4 text-left font-semibold text-gray-700">CPF</th>
                         <th className="p-4 text-left font-semibold text-gray-700">Email</th>
