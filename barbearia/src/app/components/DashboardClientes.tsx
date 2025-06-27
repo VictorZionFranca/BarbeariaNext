@@ -4,6 +4,15 @@ import { collection, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { FaUserCheck, FaUserTimes } from "react-icons/fa";
 
+// Interface para definir a estrutura de uma pessoa/cliente
+interface Pessoa {
+  id: string;
+  tipoPessoa: number;
+  criadoEm?: Timestamp;
+  dataInativacao?: Timestamp;
+  [key: string]: unknown; // Para outras propriedades que possam existir
+}
+
 // Opções de período para o filtro
 const periodOptions = [
   { label: "Dia", value: "dia" },
@@ -26,7 +35,7 @@ function isSameMonth(ts: Timestamp, now: Date) {
 }
 
 export default function DashboardClientes() {
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<Pessoa[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodoAtivos, setPeriodoAtivos] = useState("total");
   const [periodoInativos, setPeriodoInativos] = useState("total");
@@ -36,8 +45,8 @@ export default function DashboardClientes() {
       setLoading(true);
       const querySnapshot = await getDocs(collection(db, "pessoas"));
       const data = querySnapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((p: any) => p.tipoPessoa === 1);
+        .map((doc) => ({ id: doc.id, ...doc.data() } as Pessoa))
+        .filter((p: Pessoa) => p.tipoPessoa === 1);
       setClientes(data);
       setLoading(false);
     }
