@@ -86,13 +86,13 @@ export default function Sidebar() {
         >
           <span className="relative w-6 h-6 flex items-center">
             <span
-              className={`absolute left-0 ${isOpen ? 'top-3 rotate-45' : 'top-1.5'} w-6 h-0.5 bg-white rounded transition-all duration-800`}
+              className={`absolute left-0 ${isOpen ? 'top-3 rotate-45' : 'top-1.5'} w-6 h-0.5 bg-white rounded transition-all duration-[450ms]`}
             ></span>
             <span
-              className={`absolute left-0 top-3 w-6 h-0.5 bg-white rounded transition-all duration-800 ${isOpen ? 'opacity-0' : ''}`}
+              className={`absolute left-0 top-3 w-6 h-0.5 bg-white rounded transition-all uration-[450ms] ${isOpen ? 'opacity-0' : ''}`}
             ></span>
             <span
-              className={`absolute left-0 ${isOpen ? 'top-3 -rotate-45' : 'top-[18px]'} w-6 h-0.5 bg-white rounded transition-all duration-800`}
+              className={`absolute left-0 ${isOpen ? 'top-3 -rotate-45' : 'top-[18px]'} w-6 h-0.5 bg-white rounded transition-all duration-[450ms]`}
             ></span>
           </span>
         </button>
