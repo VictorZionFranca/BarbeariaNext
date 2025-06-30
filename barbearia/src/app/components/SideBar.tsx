@@ -17,10 +17,8 @@ import {
   BsBoxSeam,
   // BsCashCoin,
   BsBoxArrowInLeft,
-  BsList,
   BsBuilding,
-  BsNewspaper,
-  BsX
+  BsNewspaper
 } from "react-icons/bs";
 
 import { FaCreditCard } from "react-icons/fa6";
@@ -83,9 +81,20 @@ export default function Sidebar() {
         {/* Botão para abrir/fechar o sidebar */}
         <button
           onClick={toggleSidebar}
-          className="py-3 px-5 focus:outline-none hover:bg-gray-700 rounded-lg mt-2 mb-1 text-2xl"
+          className="py-3 px-5 focus:outline-none hover:bg-gray-700 rounded-lg mt-2 mb-1 text-2xl flex items-center justify-center"
+          aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
         >
-          {isOpen ? <BsX /> : <BsList /> }
+          <span className="relative w-6 h-6 flex items-center">
+            <span
+              className={`absolute left-0 ${isOpen ? 'top-3 rotate-45' : 'top-1.5'} w-6 h-0.5 bg-white rounded transition-all duration-800`}
+            ></span>
+            <span
+              className={`absolute left-0 top-3 w-6 h-0.5 bg-white rounded transition-all duration-800 ${isOpen ? 'opacity-0' : ''}`}
+            ></span>
+            <span
+              className={`absolute left-0 ${isOpen ? 'top-3 -rotate-45' : 'top-[18px]'} w-6 h-0.5 bg-white rounded transition-all duration-800`}
+            ></span>
+          </span>
         </button>
 
         {/* Navegação */}
@@ -95,21 +104,18 @@ export default function Sidebar() {
               <Link href={item.href} key={item.href}>
                 <li
                   className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300
-                  ${highlightIndex === index ? "bg-[#D2A348] text-white" : "hover:bg-gray-700"}
-                  ${!isOpen ? "justify-center" : ""}`}
+                  ${highlightIndex === index ? "bg-[#D2A348] text-white" : "hover:bg-gray-700"}`}
                 >
                   <span className="text-lg">{item.icon}</span>
                   <span
-                    className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${
+                    className={`whitespace-nowrap overflow-hidden transition-all duration-500 ml-2 ${
                       isOpen
-                        ? "opacity-100 max-w-full ml-2"
+                        ? "opacity-100 max-w-full"
                         : "opacity-0 max-w-0"
                     }`}
                     style={{
-                      transitionProperty: isOpen
-                        ? "opacity, max-width"
-                        : "none",
-                      transitionDelay: isOpen ? `${index * 0.12}s` : "0s",
+                      transitionProperty: "opacity, max-width",
+                      transitionDelay: "0s",
                     }}
                   >
                     {item.label}
@@ -123,14 +129,17 @@ export default function Sidebar() {
           <ul className="mt-auto">
             <li
               onClick={handleLogout} // Chama a função de logout ao clicar
-              className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-700 cursor-pointer
-              ${!isOpen ? "justify-center" : ""}`}
+              className={`flex items-center py-2 mb-1 px-6 font-medium text-lg rounded-lg transition-all duration-300 hover:bg-gray-700 cursor-pointer`}
             >
               <span className="text-lg"><BsBoxArrowInLeft /></span>
               <span
-                className={`whitespace-nowrap overflow-hidden transition-all duration-500 ${
-                  isOpen ? "opacity-100 max-w-full ml-2" : "opacity-0 max-w-0"
+                className={`whitespace-nowrap overflow-hidden transition-all duration-500 ml-2 ${
+                  isOpen ? "opacity-100 max-w-full" : "opacity-0 max-w-0"
                 }`}
+                style={{
+                  transitionProperty: "opacity, max-width",
+                  transitionDelay: "0s",
+                }}
               >
                 Sair
               </span>
