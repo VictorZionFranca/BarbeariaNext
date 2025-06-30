@@ -29,6 +29,9 @@ export default function ClientesManager() {
     const [modalCadastro, setModalCadastro] = useState(false);
     const [modalEditar, setModalEditar] = useState(false);
     const [modalAnimando, setModalAnimando] = useState<"cadastro" | "editar" | "excluir" | null>(null);
+    const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null);
+    const [itensPorPagina, setItensPorPagina] = useState<number | 'all'>(10);
+    const [paginaAtual, setPaginaAtual] = useState(1);
 
     const carregarClientes = useCallback(async () => {
         const lista = await listarClientes();
@@ -38,6 +41,10 @@ export default function ClientesManager() {
     useEffect(() => {
         carregarClientes();
     }, [carregarClientes]);
+
+    useEffect(() => {
+        setPaginaAtual(1);
+    }, [busca, itensPorPagina]);
 
     function handleChange(e: ChangeEvent<HTMLInputElement>) {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -133,6 +140,7 @@ export default function ClientesManager() {
             tipoPessoa: cliente.tipoPessoa,
         });
         setEditId(cliente.id!);
+        setClienteEditando(cliente);
         setModalEditar(true);
         setModalAnimando("editar");
         setTimeout(() => setModalAnimando(null), 100);
@@ -164,10 +172,15 @@ export default function ClientesManager() {
     }
 
     const clientesFiltrados = clientes.filter(c =>
-        c.nomeCompleto.toLowerCase().includes(busca.toLowerCase()) ||
+        (c.nomeCompleto && c.nomeCompleto.toLowerCase().includes(busca.toLowerCase())) ||
         c.cpf.includes(busca) ||
-        c.email.toLowerCase().includes(busca.toLowerCase())
+        (c.email && c.email.toLowerCase().includes(busca.toLowerCase()))
     );
+
+    const totalPaginas = itensPorPagina === 'all' ? 1 : Math.ceil(clientesFiltrados.length / itensPorPagina);
+    const clientesPaginados = itensPorPagina === 'all'
+        ? clientesFiltrados
+        : clientesFiltrados.slice((paginaAtual - 1) * (itensPorPagina as number), paginaAtual * (itensPorPagina as number));
 
     function fecharModalCadastroAnimado() {
         setModalAnimando("cadastro");
@@ -225,6 +238,19 @@ export default function ClientesManager() {
         return `${valor.slice(0, 2)}/${valor.slice(2, 4)}/${valor.slice(4, 8)}`;
     }
 
+    function formatarData(data: unknown) {
+        if (!data) return "";
+        // Firestore Timestamp
+        if (typeof data === 'object' && data !== null && 'seconds' in data && typeof (data as { seconds: number }).seconds === 'number') {
+            const d = new Date((data as { seconds: number }).seconds * 1000);
+            return d.toLocaleDateString('pt-BR');
+        }
+        // String ou Date
+        const d = new Date(data as string | number | Date);
+        if (!isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
+        return "";
+    }
+
     return (
         <div className="flex flex-col min-h-[78vh]">
             <div className="flex mb-4 items-center justify-between">
@@ -248,6 +274,20 @@ export default function ClientesManager() {
                             </button>
                         )}
                     </div>
+                    <div className="ml-4 flex items-center gap-2">
+                        <label htmlFor="itensPorPagina" className="text-gray-700">Mostrar:</label>
+                        <select
+                            id="itensPorPagina"
+                            value={itensPorPagina}
+                            onChange={e => setItensPorPagina(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                            className="border rounded p-2 text-black"
+                        >
+                            <option value={5}>5</option>
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
                 </div>
                 <button
                     className="bg-green-600 text-white px-4 py-2 rounded-lg min-w-[180px] transition-colors duration-200 hover:bg-green-700 flex items-center gap-2"
@@ -262,56 +302,88 @@ export default function ClientesManager() {
                     <FaPlus className="h-4 w-4" />Cadastrar Cliente
                 </button>
             </div>
-            <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
-                <thead>
-                    <tr className="bg-gray-200 border-b border-gray-200">
-                        <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">CPF</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Email</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Telefone</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {clientesFiltrados.length === 0 ? (
-                        <tr>
-                            <td colSpan={5} className="p-6 text-center text-gray-500">
-                                Nenhum cliente encontrado.
-                            </td>
-                        </tr>
-                    ) : (
-                        clientesFiltrados.map((c) => (
-                            <tr
-                                key={c.id}
-                                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                            >
-                                <td className="p-4 align-middle">{c.nomeCompleto}</td>
-                                <td className="p-4 align-middle">{c.cpf}</td>
-                                <td className="p-4 align-middle">{c.email}</td>
-                                <td className="p-4 align-middle">{c.telefone}</td>
-                                <td className="p-4 align-middle">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleEditar(c)}
-                                            className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
-                                            title="Editar"
-                                        >
-                                            <FaPencilAlt className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleExcluir(c.id!)}
-                                            className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
-                                            title="Excluir"
-                                        >
-                                            <FaTrash className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </td>
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-200">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                             </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {clientesPaginados.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                                        Nenhum cliente encontrado.
+                                    </td>
+                                </tr>
+                            ) : (
+                                clientesPaginados.map((c) => (
+                                    <tr
+                                        key={c.id}
+                                        className="hover:bg-gray-50"
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900">{c.nomeCompleto}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">{c.cpf}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">{c.email}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-500">{c.telefone}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditar(c)}
+                                                    className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                    title="Editar"
+                                                >
+                                                    <FaPencilAlt className="h-5 w-5" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleExcluir(c.id!)}
+                                                    className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                    title="Excluir"
+                                                >
+                                                    <FaTrash className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {/* Paginação */}
+            {itensPorPagina !== 'all' && totalPaginas > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-4">
+                    <button
+                        className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+                        onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
+                        disabled={paginaAtual === 1}
+                    >
+                        Anterior
+                    </button>
+                    <span className="text-gray-700">Página {paginaAtual} de {totalPaginas}</span>
+                    <button
+                        className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+                        onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
+                        disabled={paginaAtual === totalPaginas}
+                    >
+                        Próxima
+                    </button>
+                </div>
+            )}
 
             {/* Modal de confirmação de exclusão */}
             {modalExcluir.aberto && typeof window !== "undefined" && document.body &&
@@ -563,6 +635,11 @@ export default function ClientesManager() {
                                 ×
                             </button>
                             <h2 className="text-2xl font-bold mb-6 text-center text-black">Editar Cliente</h2>
+                            {clienteEditando && clienteEditando.criadoEm && (
+                                <div className="text-center text-gray-600 mb-4">
+                                    Cliente desde {formatarData(clienteEditando.criadoEm)}
+                                </div>
+                            )}
                             <form
                                 onSubmit={handleSubmit}
                                 className="flex flex-col gap-4"

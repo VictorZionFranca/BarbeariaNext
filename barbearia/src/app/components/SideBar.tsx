@@ -8,7 +8,8 @@ import { auth } from "../../lib/firebaseConfig";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BsFillGridFill,
+  // BsFillGridFill,
+  BsHouseDoorFill,
   BsCalendarCheck,
   BsFillPersonFill,
   BsFilePerson,
@@ -50,7 +51,7 @@ export default function Sidebar() {
 
   const menuItems = useMemo(
     () => [
-      { href: "/", icon: <BsFillGridFill />, label: "Dashboard" },
+      { href: "/", icon: <BsHouseDoorFill />, label: "Home" },
       { href: "/agendamentos", icon: <BsCalendarCheck />, label: "Agendamentos" },
       { href: "/clientes", icon: <BsFillPersonFill />, label: "Clientes" },
       { href: "/colaboradores", icon: <BsFilePerson />, label: "Colaboradores" },

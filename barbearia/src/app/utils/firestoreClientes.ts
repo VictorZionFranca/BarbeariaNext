@@ -14,8 +14,8 @@ export interface Cliente {
     senhaTemporaria?: string;
 }
 
-// Função para criar conta no Authentication via API
-async function criarContaAuthViaAPI(email: string, senha: string, nomeCompleto: string) {
+// Função para criar conta no Authentication via API e retornar o UID
+async function criarContaAuthViaAPI(email: string, senha: string, nomeCompleto: string): Promise<string> {
     try {
         const response = await fetch('/api/auth/create-account', {
             method: 'POST',
@@ -33,18 +33,20 @@ async function criarContaAuthViaAPI(email: string, senha: string, nomeCompleto: 
 
         if (!response.ok) {
             if (response.status === 409) {
-                console.log(`Email ${email} já possui conta Auth`);
-                return;
+                throw new Error('Email já cadastrado');
             }
             throw new Error(data.error || 'Erro ao criar conta');
         }
 
-        console.log(`Conta Auth criada para: ${email}`);
-        
+        if (!data.uid) {
+            throw new Error('UID não retornado pela API de criação de conta');
+        }
+
+        console.log(`Conta Auth criada para: ${email}, UID: ${data.uid}`);
+        return data.uid;
     } catch (error: unknown) {
         console.error(`Erro ao criar conta Auth para ${email}:`, error);
-        // Não rejeitar a operação principal se falhar a criação da conta Auth
-        // A conta pode ser criada posteriormente
+        throw error;
     }
 }
 
@@ -125,7 +127,10 @@ export async function criarCliente(cliente: Omit<Cliente, "id" | "criadoEm" | "d
     const senhaTemporaria = gerarSenhaTemporaria();
 
     try {
-        // Primeiro, salvar no Firestore
+        // Primeiro, criar conta no Authentication e obter o UID
+        const uid = await criarContaAuthViaAPI(cliente.email, senhaTemporaria, cliente.nomeCompleto);
+
+        // Salvar no Firestore usando o UID como ID do documento
         const clientesRef = collection(db, "pessoas");
         const novoCliente = {
             ...cliente,
@@ -134,20 +139,13 @@ export async function criarCliente(cliente: Omit<Cliente, "id" | "criadoEm" | "d
             dataInativacao: null,
             senhaTemporaria: senhaTemporaria
         };
-        
-        // Usar o email como ID do documento
-        const docId = cliente.email;
 
-        // Usar setDoc para definir o ID personalizado
-        const docRef = doc(clientesRef, docId);
+        const docRef = doc(clientesRef, uid);
         await setDoc(docRef, novoCliente);
-        
-        // Criar conta no Authentication via API (não interfere com o estado do admin)
-        await criarContaAuthViaAPI(cliente.email, senhaTemporaria, cliente.nomeCompleto);
-        
+
         // TODO: Enviar email com credenciais de acesso
-        console.log(`Cliente criado com sucesso! Email: ${cliente.email}, Senha temporária: ${senhaTemporaria}`);
-        
+        console.log(`Cliente criado com sucesso! UID: ${uid}, Email: ${cliente.email}, Senha temporária: ${senhaTemporaria}`);
+
         return docRef;
     } catch (error: unknown) {
         throw error;
