@@ -196,6 +196,11 @@ export default function ProdutosManager() {
     return texto.slice(0, limite) + "...";
   }
 
+  // Função utilitária para formatar preço igual à página de serviços
+  function formatarPreco(preco: number) {
+    return `R$ ${preco.toFixed(2).replace('.', ',')}`;
+  }
+
   return (
     <div className="flex flex-col min-h-[78vh]">
       <div className="flex mb-4 items-center justify-between">
@@ -288,8 +293,8 @@ export default function ProdutosManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-green-600 font-bold">
-                        R$ {p.preco.toFixed(2)}
+                      <div className="text-sm text-gray-500">
+                        {formatarPreco(p.preco)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -379,8 +384,8 @@ export default function ProdutosManager() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600 font-bold">
-                          R$ {p.preco.toFixed(2)}
+                        <div className="text-sm text-gray-500">
+                          {formatarPreco(p.preco)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -478,8 +483,8 @@ export default function ProdutosManager() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-gray-500">Preço</span>
-                    <p className="text-lg font-bold text-green-600">
-                      R$ {modalVisualizar.produto.preco.toFixed(2)}
+                    <p className="text-lg text-black font-bold">
+                      {formatarPreco(modalVisualizar.produto.preco)}
                     </p>
                   </div>
                   <div>
