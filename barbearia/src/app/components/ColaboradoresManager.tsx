@@ -189,11 +189,11 @@ export default function ColaboradoresManager() {
                     await atualizarColaboradorInformacoes(editId, { unidadeNome: form.unidadeNome });
                 }
             } else {
-                await criarColaborador(form);
-                // Após criar colaborador, criar informações profissionais
+                const { uid } = await criarColaborador(form);
+                // Após criar colaborador, criar informações profissionais usando UID
                 if (form.unidadeNome) {
                     const dataAdmissao = new Date(); // Data atual
-                    await criarColaboradorInformacoes(form.email, dataAdmissao, [], undefined, undefined, form.unidadeNome);
+                    await criarColaboradorInformacoes(uid, dataAdmissao, [], undefined, undefined, form.unidadeNome);
                 }
             }
             await carregarColaboradores();

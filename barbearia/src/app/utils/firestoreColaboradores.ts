@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, updateDoc, query, where, Timestamp, setDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, where, Timestamp, setDoc, getDoc, DocumentReference } from "firebase/firestore";
 import { db } from "../../lib/firebaseConfig";
 import { sincronizarDadosColaborador } from "./firestoreColaboradoresInformacoes";
 
@@ -17,7 +17,7 @@ export interface Colaborador {
 }
 
 // Função para criar conta no Authentication via API
-async function criarContaAuthViaAPI(email: string, senha: string, nomeCompleto: string) {
+async function criarContaAuthViaAPI(email: string, senha: string, nomeCompleto: string): Promise<string> {
     try {
         const response = await fetch('/api/auth/create-account', {
             method: 'POST',
@@ -36,17 +36,20 @@ async function criarContaAuthViaAPI(email: string, senha: string, nomeCompleto: 
         if (!response.ok) {
             if (response.status === 409) {
                 console.log(`Email ${email} já possui conta Auth`);
-                return;
+                throw new Error('Email já possui conta Auth');
             }
             throw new Error(data.error || 'Erro ao criar conta');
         }
 
-        console.log(`Conta Auth criada para: ${email}`);
-        
+        if (!data.uid) {
+            throw new Error('UID não retornado pela API');
+        }
+
+        console.log(`Conta Auth criada para: ${email}, UID: ${data.uid}`);
+        return data.uid;
     } catch (error: unknown) {
         console.error(`Erro ao criar conta Auth para ${email}:`, error);
-        // Não rejeitar a operação principal se falhar a criação da conta Auth
-        // A conta pode ser criada posteriormente
+        throw error;
     }
 }
 
@@ -119,7 +122,7 @@ export async function listarColaboradores() {
 }
 
 // Criar novo colaborador
-export async function criarColaborador(colaborador: Omit<Colaborador, "id" | "criadoEm" | "dataInativacao">) {
+export async function criarColaborador(colaborador: Omit<Colaborador, "id" | "criadoEm" | "dataInativacao">): Promise<{ uid: string, docRef: DocumentReference }> {
     // Verificar duplicatas antes de criar
     await verificarDuplicatas(colaborador);
 
@@ -127,7 +130,10 @@ export async function criarColaborador(colaborador: Omit<Colaborador, "id" | "cr
     const senhaTemporaria = gerarSenhaTemporaria();
 
     try {
-        // Primeiro, salvar no Firestore
+        // Criar conta no Authentication via API e obter UID
+        const uid = await criarContaAuthViaAPI(colaborador.email, senhaTemporaria, colaborador.nomeCompleto);
+
+        // Salvar no Firestore usando UID como ID
         const colaboradoresRef = collection(db, "pessoas");
         const novoColaborador = {
             ...colaborador,
@@ -136,21 +142,14 @@ export async function criarColaborador(colaborador: Omit<Colaborador, "id" | "cr
             dataInativacao: null,
             senhaTemporaria: senhaTemporaria
         };
-        
-        // Usar o email como ID do documento
-        const docId = colaborador.email;
 
-        // Usar setDoc para definir o ID personalizado
-        const docRef = doc(colaboradoresRef, docId);
+        const docRef = doc(colaboradoresRef, uid);
         await setDoc(docRef, novoColaborador);
-        
-        // Criar conta no Authentication via API (não interfere com o estado do admin)
-        await criarContaAuthViaAPI(colaborador.email, senhaTemporaria, colaborador.nomeCompleto);
-        
+
         // TODO: Enviar email com credenciais de acesso
-        console.log(`Colaborador criado com sucesso! Email: ${colaborador.email}, Senha temporária: ${senhaTemporaria}`);
-        
-        return docRef;
+        console.log(`Colaborador criado com sucesso! UID: ${uid}, Email: ${colaborador.email}, Senha temporária: ${senhaTemporaria}`);
+
+        return { uid, docRef };
     } catch (error: unknown) {
         throw error;
     }
@@ -204,7 +203,7 @@ export async function atualizarColaborador(id: string, colaborador: Partial<Cola
             }
         }
 
-        // Se o email foi alterado, precisamos recriar o documento com o novo ID
+        // Se o email foi alterado, precisamos atualizar o campo no Auth e no Firestore
         if (colaborador.email && colaborador.email !== colaboradorAtual.email) {
             try {
                 // Buscar o UID do usuário no Authentication usando o email atual
@@ -213,34 +212,22 @@ export async function atualizarColaborador(id: string, colaborador: Partial<Cola
                     const data = await response.json();
                     if (data.uid) {
                         await atualizarEmailAuthViaAPI(data.uid, colaborador.email);
+                        // Atualizar apenas o campo email no documento Firestore (id = UID)
+                        const colaboradoresRef = collection(db, "pessoas");
+                        const colaboradorRef = doc(colaboradoresRef, data.uid);
+                        await updateDoc(colaboradorRef, { ...colaborador, email: colaborador.email });
+                        // Sincronizar dados nas informações profissionais
+                        try {
+                            await sincronizarDadosColaborador(data.uid);
+                        } catch (error) {
+                            console.error("Erro ao sincronizar informações profissionais:", error);
+                        }
+                        return colaboradorRef;
                     }
                 }
-
-                // Recriar documento com novo ID (email)
-                const colaboradoresRef = collection(db, "pessoas");
-                
-                // Preparar dados atualizados
-                const dadosAtualizados = {
-                    ...colaboradorAtual,
-                    ...colaborador,
-                };
-                
-                // Remover o campo id dos dados para não duplicar
-                const { id, ...dadosSemId } = dadosAtualizados;
-                
-                // Criar novo documento com o novo email como ID
-                const novoDocRef = doc(colaboradoresRef, colaborador.email);
-                await setDoc(novoDocRef, dadosSemId);
-                
-                // Excluir completamente o documento antigo
-                const docAntigoRef = doc(colaboradoresRef, id);
-                await deleteDoc(docAntigoRef);
-                
-                console.log(`Documento recriado com novo ID: ${colaborador.email}`);
-                return novoDocRef;
-                
+                throw new Error('UID não encontrado para o colaborador');
             } catch (error) {
-                console.error('Erro ao recriar documento com novo email:', error);
+                console.error('Erro ao atualizar email do colaborador:', error);
                 throw new Error('Erro ao atualizar email do colaborador');
             }
         }

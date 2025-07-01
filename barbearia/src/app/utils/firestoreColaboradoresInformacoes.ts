@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, updateDoc, Timestamp, setDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, Timestamp, setDoc, deleteDoc, getDoc, deleteField } from "firebase/firestore";
 import { db } from "../../lib/firebaseConfig";
 import { buscarColaboradorPorId } from "./firestoreColaboradores";
 
@@ -52,7 +52,7 @@ export async function listarColaboradoresInformacoes(): Promise<ColaboradorInfor
 // Buscar informações de um colaborador específico
 export async function buscarColaboradorInformacoes(pessoaId: string): Promise<ColaboradorInformacoes | null> {
     try {
-        // Como o documento é criado com o email como ID, buscar diretamente
+        // Buscar pelo UID como ID do documento
         const docRef = doc(db, "colaboradoresInformacoes", pessoaId);
         const docSnap = await getDoc(docRef);
         
@@ -102,7 +102,7 @@ export async function criarColaboradorInformacoes(
             dadosFinais.periodoFeriasFim = periodoFeriasFim;
         }
 
-        // Usar o pessoaId como ID do documento para facilitar a busca
+        // Usar o UID como ID do documento
         const docRef = doc(db, "colaboradoresInformacoes", pessoaId);
         await setDoc(docRef, dadosFinais);
         
@@ -133,6 +133,7 @@ export async function atualizarColaboradorInformacoes(
     dados: Partial<Omit<ColaboradorInformacoes, "id" | "pessoaId" | "criadoEm">>
 ): Promise<void> {
     try {
+        let removerCamposFerias = false;
         // Buscar informações atuais
         const docRef = doc(db, "colaboradoresInformacoes", pessoaId);
         const docSnap = await getDoc(docRef);
@@ -149,7 +150,11 @@ export async function atualizarColaboradorInformacoes(
             // Se as férias acabaram, mover para histórico
             const periodoFeriasInicio = safeToDate(data.periodoFeriasInicio);
             const periodoFeriasFim = safeToDate(data.periodoFeriasFim);
-            if (periodoFeriasFim && periodoFeriasFim < new Date()) {
+            // Se existe fim de férias, ajustar para 23:59:59 do dia
+            if (periodoFeriasFim) {
+                periodoFeriasFim.setHours(23, 59, 59, 999);
+            }
+            if (periodoFeriasFim && new Date() > periodoFeriasFim) {
                 if (periodoFeriasInicio && periodoFeriasFim) {
                     // Só adiciona ao histórico se ainda não estiver lá
                     const jaNoHistorico = historico.ferias.some(f => {
@@ -164,9 +169,7 @@ export async function atualizarColaboradorInformacoes(
                         historico.ferias.push({ inicio: periodoFeriasInicio, fim: periodoFeriasFim });
                     }
                 }
-                // Sempre remove os campos de férias após o término
-                delete dados.periodoFeriasInicio;
-                delete dados.periodoFeriasFim;
+                removerCamposFerias = true;
             }
             // Se existirem folgas e a data de admissão for antiga, mover para histórico (exemplo: se dataAdmissao for há mais de 1 ano)
             const dataAdmissao = safeToDate(data.dataAdmissao);
@@ -223,7 +226,15 @@ export async function atualizarColaboradorInformacoes(
         if (dados.email !== undefined) {
             dadosAtualizados.email = dados.email;
         }
-        await updateDoc(docRef, dadosAtualizados);
+        // Se for necessário remover os campos de férias, adiciona deleteField() no update
+        let camposParaRemover = {};
+        if (removerCamposFerias) {
+            camposParaRemover = {
+                periodoFeriasInicio: deleteField(),
+                periodoFeriasFim: deleteField(),
+            };
+        }
+        await updateDoc(docRef, { ...dadosAtualizados, ...camposParaRemover });
         // Se a unidade foi alterada, também atualizar na tabela pessoas
         if (dados.unidadeNome !== undefined) {
             try {
