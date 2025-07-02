@@ -18,7 +18,8 @@ import {
   // BsCashCoin,
   BsBoxArrowInLeft,
   BsBuilding,
-  BsNewspaper
+  BsNewspaper,
+  BsShare
 } from "react-icons/bs";
 
 import { FaCreditCard } from "react-icons/fa6";
@@ -58,6 +59,7 @@ export default function Sidebar() {
       { href: "/produtos", icon: <BsBoxSeam />, label: "Produtos" },
       { href: "/noticias", icon: <BsNewspaper />, label: "Notícias" },
       { href: "/formaPagamento", icon: <FaCreditCard />, label: "Forma de Pagamento" },
+      { href: "/redesSociais", icon: <BsShare />, label: "Redes Sociais" },
     ],
     []
   );
