@@ -3,8 +3,9 @@ import React, { ChangeEvent, FormEvent, useCallback, useEffect, useState } from 
 import { listarColaboradores, criarColaborador, atualizarColaborador, deletarColaborador, Colaborador } from "../utils/firestoreColaboradores";
 import { listarColaboradoresInformacoes, ColaboradorInformacoes, buscarColaboradorInformacoes, atualizarColaboradorInformacoes, getDiasSemana, criarColaboradorInformacoes } from "../utils/firestoreColaboradoresInformacoes";
 import { listarUnidades, Unidade } from "../utils/firestoreUnidades";
-import { FaPencilAlt, FaTrash, FaPlus, FaInfoCircle } from "react-icons/fa";
+import { FaPencilAlt, FaTrash, FaPlus, FaInfoCircle, FaRegCalendarAlt } from "react-icons/fa";
 import { createPortal } from "react-dom";
+import { listarFeriasColaboradores, criarFeriasColaborador, FeriasColaborador } from "../utils/firestoreFeriasColaboradores";
 
 const camposIniciais = {
     cpf: "",
@@ -24,15 +25,15 @@ const camposInfoIniciais = {
     unidadeNome: "",
 };
 
-function isFirestoreTimestamp(obj: unknown): obj is { toDate: () => Date } {
-    return !!obj && typeof obj === 'object' && typeof (obj as { toDate: () => Date }).toDate === 'function';
-}
-
 // Função utilitária para criar data no horário local do Brasil a partir de yyyy-mm-dd
 function criarDataLocal(dateStr: string): Date | undefined {
     if (!dateStr) return undefined;
     const [ano, mes, dia] = dateStr.split('-').map(Number);
     return new Date(ano, mes - 1, dia, 0, 0, 0);
+}
+
+function isFirestoreTimestamp(obj: unknown): obj is { toDate: () => Date } {
+    return !!obj && typeof obj === 'object' && typeof (obj as { toDate: () => Date }).toDate === 'function';
 }
 
 export default function ColaboradoresManager() {
@@ -58,6 +59,10 @@ export default function ColaboradoresManager() {
     const [modalInfo, setModalInfo] = useState(false);
     const [modalAnimando, setModalAnimando] = useState<"cadastro" | "editar" | "excluir" | "info" | null>(null);
     const [diasSemana] = useState(getDiasSemana());
+    const [feriasColaboradores, setFeriasColaboradores] = useState<FeriasColaborador[]>([]);
+    const [modalFerias, setModalFerias] = useState<{ aberto: boolean; colaborador: Colaborador | null }>({ aberto: false, colaborador: null });
+    const [feriasSelecionadas, setFeriasSelecionadas] = useState<{ dataInicio: Date; dataFim: Date }[]>([]);
+    const [modalFeriasAnimando, setModalFeriasAnimando] = useState(false);
 
     // Função para limpar férias vencidas e atualizar histórico
     async function limparFeriasVencidas(colaboradoresInfo: ColaboradorInformacoes[]) {
@@ -106,9 +111,34 @@ export default function ColaboradoresManager() {
         }
     }, []);
 
+    // Carregar férias dos colaboradores (coleção + histórico)
+    const carregarFeriasColaboradores = useCallback(async () => {
+        const [feriasColecao, infos] = await Promise.all([
+            listarFeriasColaboradores(),
+            listarColaboradoresInformacoes()
+        ]);
+        // Unir férias da coleção com férias do histórico
+        const feriasHistorico: FeriasColaborador[] = [];
+        for (const info of infos) {
+            if (info.historico && Array.isArray(info.historico.ferias)) {
+                for (const ferias of info.historico.ferias) {
+                    feriasHistorico.push({
+                        colaboradorId: info.pessoaId,
+                        nomeColaborador: info.nome,
+                        dataInicio: new Date(ferias.inicio),
+                        dataFim: new Date(ferias.fim),
+                        criadoEm: info.criadoEm,
+                    });
+                }
+            }
+        }
+        setFeriasColaboradores([...feriasColecao, ...feriasHistorico]);
+    }, []);
+
     useEffect(() => {
         carregarColaboradores();
-    }, [carregarColaboradores]);
+        carregarFeriasColaboradores();
+    }, [carregarColaboradores, carregarFeriasColaboradores]);
 
     function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -182,6 +212,7 @@ export default function ColaboradoresManager() {
         }
 
         try {
+            let colaboradorId = editId;
             if (editId) {
                 await atualizarColaborador(editId, form);
                 // Sincronizar unidade também na coleção colaboradoresInformacoes
@@ -190,11 +221,22 @@ export default function ColaboradoresManager() {
                 }
             } else {
                 const { uid } = await criarColaborador(form);
+                colaboradorId = uid;
                 // Após criar colaborador, criar informações profissionais usando UID
                 if (form.unidadeNome) {
                     const dataAdmissao = new Date(); // Data atual
                     await criarColaboradorInformacoes(uid, dataAdmissao, [], undefined, undefined, form.unidadeNome);
                 }
+            }
+            // Registro de férias: se informado novo período, criar na coleção feriasColaboradores
+            if (formInfo.periodoFeriasInicio && formInfo.periodoFeriasFim && colaboradorId) {
+                await criarFeriasColaborador({
+                    colaboradorId,
+                    nomeColaborador: form.nomeCompleto,
+                    dataInicio: new Date(formInfo.periodoFeriasInicio),
+                    dataFim: new Date(formInfo.periodoFeriasFim),
+                });
+                await carregarFeriasColaboradores();
             }
             await carregarColaboradores();
             setForm(camposIniciais);
@@ -476,6 +518,38 @@ export default function ColaboradoresManager() {
         }
     }
 
+    // Função para abrir o modal de férias de um colaborador
+    function abrirModalFerias(colaborador: Colaborador) {
+        // Buscar informações profissionais do colaborador
+        const info = colaboradoresInfo.find(i => i.pessoaId === colaborador.id);
+        // Buscar histórico de férias (coleção + histórico)
+        const feriasColecao = feriasColaboradores.filter(f => f.colaboradorId === colaborador.id);
+        const feriasHistorico = (info?.historico?.ferias || []).map(f => ({
+            dataInicio: isFirestoreTimestamp(f.inicio) ? f.inicio.toDate() : new Date(f.inicio),
+            dataFim: isFirestoreTimestamp(f.fim) ? f.fim.toDate() : new Date(f.fim)
+        }));
+        const feriasTodas = [
+            ...feriasColecao.map(f => ({
+                dataInicio: isFirestoreTimestamp(f.dataInicio) ? f.dataInicio.toDate() : new Date(f.dataInicio),
+                dataFim: isFirestoreTimestamp(f.dataFim) ? f.dataFim.toDate() : new Date(f.dataFim)
+            })),
+            ...feriasHistorico
+        ].filter(f => f.dataInicio && f.dataFim && !isNaN(f.dataInicio.getTime()) && !isNaN(f.dataFim.getTime()));
+        setFeriasSelecionadas(feriasTodas);
+        setModalFerias({ aberto: true, colaborador });
+        setModalFeriasAnimando(true);
+        setTimeout(() => setModalFeriasAnimando(false), 100);
+    }
+
+    function fecharModalFeriasAnimado() {
+        setModalFeriasAnimando(true);
+        setTimeout(() => {
+            setModalFerias({ aberto: false, colaborador: null });
+            setFeriasSelecionadas([]);
+            setModalFeriasAnimando(false);
+        }, 300);
+    }
+
     // Função para verificar se colaborador está de férias
     function colaboradorEstaDeFerias(info: ColaboradorInformacoes): boolean {
         if (!info.periodoFeriasInicio || !info.periodoFeriasFim) return false;
@@ -548,13 +622,14 @@ export default function ColaboradoresManager() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidade</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Férias</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {colaboradoresFiltrados.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                                         Nenhum colaborador encontrado.
                                     </td>
                                 </tr>
@@ -582,6 +657,18 @@ export default function ColaboradoresManager() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm text-gray-500">{unidade}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => abrirModalFerias(c)}
+                                                        title="Ver histórico de férias"
+                                                        className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 border border-blue-300 hover:bg-blue-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                                    >
+                                                        <FaRegCalendarAlt className="text-blue-600 text-xl" />
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex gap-2">
@@ -1268,6 +1355,52 @@ export default function ColaboradoresManager() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
+            {/* Modal de Férias do Colaborador */}
+            {modalFerias.aberto && modalFerias.colaborador && typeof window !== "undefined" && document.body &&
+                createPortal(
+                    <div 
+                        className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                fecharModalFeriasAnimado();
+                            }
+                        }}
+                    >
+                        <div
+                            className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-xl border border-gray-200 relative
+                                transform transition-all duration-300
+                                ${modalFeriasAnimando ? 'opacity-0 -translate-y-80 scale-95' : 'opacity-100 translate-y-0 scale-100'}
+                            `}
+                        >
+                            <button
+                                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                                onClick={fecharModalFeriasAnimado}
+                                aria-label="Fechar"
+                                type="button"
+                            >
+                                ×
+                            </button>
+                            <h2 className="text-3xl font-extrabold mb-8 text-center text-black tracking-tight">
+                                Histórico de Férias - {modalFerias.colaborador.nomeCompleto}
+                            </h2>
+                            {feriasSelecionadas.length === 0 ? (
+                                <div className="text-center text-black text-lg font-semibold">Nenhum registro de férias encontrado.</div>
+                            ) : (
+                                <ul className="divide-y divide-gray-200">
+                                    {feriasSelecionadas
+                                        .sort((a, b) => b.dataInicio.getTime() - a.dataInicio.getTime())
+                                        .map((f, idx) => (
+                                            <li key={idx} className="py-4 flex justify-between text-black text-lg font-medium">
+                                                <span>{f.dataInicio.toLocaleDateString("pt-BR")} até {f.dataFim.toLocaleDateString("pt-BR")}</span>
+                                            </li>
+                                        ))}
+                                </ul>
+                            )}
                         </div>
                     </div>,
                     document.body
