@@ -106,7 +106,7 @@ export default function DashboardClientes() {
   });
 
   return (
-    <div className="flex flex-col min-h-[78vh]">
+    <div className="flex flex-col mb-[50px]">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-black my-8">Dashboard de Clientes</h1>
       </div>

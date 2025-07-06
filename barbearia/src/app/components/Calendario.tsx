@@ -12,6 +12,7 @@ import { listarClientes, Cliente } from "../utils/firestoreClientes";
 import { listarColaboradores, Colaborador } from "../utils/firestoreColaboradores";
 import { listarServicos, Servico } from "../utils/firestoreServicos";
 import { createPortal } from "react-dom";
+import { listarUnidades, Unidade } from "../utils/firestoreUnidades";
 
 // Tipos mínimos para handlers do FullCalendar
 interface DateClickInfo {
@@ -20,6 +21,12 @@ interface DateClickInfo {
 }
 interface EventClickInfo {
   event: { extendedProps: unknown };
+}
+
+// Adicionar tipos para props de controle do modal externo
+interface CalendarioProps {
+  modalNovoAberto?: boolean;
+  setModalNovoAberto?: (open: boolean) => void;
 }
 
 // Função utilitária para formatar data para YYYY-MM-DD
@@ -43,7 +50,23 @@ function formatarHoraInput(hora: string | undefined): string {
   return hora;
 }
 
-export default function Calendario() {
+// Função utilitária para garantir formato YYYY-MM-DD local
+function getHojeISO() {
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  const tzOffset = hoje.getTimezoneOffset() * 60000;
+  return new Date(hoje.getTime() - tzOffset).toISOString().slice(0, 10);
+}
+
+// Função para obter o nome do dia da semana no padrão dos horários da unidade
+function getDiaSemanaFirestore(date: string) {
+  const dias = ["domingo","segunda","terca","quarta","quinta","sexta","sabado"];
+  const d = new Date(date);
+  // getDay: 0 (domingo) até 6 (sábado)
+  return dias[d.getDay()];
+}
+
+export default function Calendario({ modalNovoAberto, setModalNovoAberto }: CalendarioProps) {
   const [eventos, setEventos] = useState<EventInput[]>([]);
   const [altura, setAltura] = useState<string>("700px");
   const [modalAberto, setModalAberto] = useState(false);
@@ -55,12 +78,25 @@ export default function Calendario() {
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const calendarRef = useRef<InstanceType<typeof FullCalendar> | null>(null);
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>("");
+  const [loadingUnidades, setLoadingUnidades] = useState(true);
+  const [modalFechado, setModalFechado] = useState<{ aberto: boolean; dia: string }>({ aberto: false, dia: "" });
+
+  // Se receber controle externo, usa ele; senão, usa estado interno
+  const modalNovoOpen = typeof modalNovoAberto === 'boolean' ? modalNovoAberto : modalAberto;
+  const setModalNovoOpen = setModalNovoAberto || setModalAberto;
 
   // Buscar listas para selects
   useEffect(() => {
     listarClientes().then(setClientes);
     listarColaboradores().then(setColaboradores);
     listarServicos().then((servs) => setServicos(servs as (Servico & { id: string })[]));
+    setLoadingUnidades(true);
+    listarUnidades().then((lista) => {
+      setUnidades(lista.filter(u => u.ativo));
+      setLoadingUnidades(false);
+    });
   }, []);
 
   // Buscar agendamentos do Firestore
@@ -88,35 +124,85 @@ export default function Calendario() {
     }
   }, []);
 
-  const classeDia = (arg: { date: Date }) => {
-    if (arg.date.getDay() === 0) {
-      return ["domingo-fechado"];
+  // Filtrar barbeiros ativos da unidade selecionada
+  const barbeirosUnidade = colaboradores.filter(c => c.unidadeNome === unidades.find(u => u.id === unidadeSelecionada)?.nome && c.dataInativacao === null);
+
+  // Filtrar serviços ativos
+  const servicosAtivos = servicos.filter(s => s.ativo);
+
+  // Função para gerar horários disponíveis (considerando agenda do barbeiro e horários da unidade)
+  function gerarHorariosDisponiveis() {
+    if (!form.data || !form.colaboradorId || !unidadeSelecionada) return [];
+    const unidade = unidades.find(u => u.id === unidadeSelecionada);
+    if (!unidade) return [];
+    const diaSemana = ["domingo","segunda","terca","quarta","quinta","sexta","sabado"][new Date(form.data).getDay()];
+    const horariosFuncionamento = unidade.horariosFuncionamento?.[diaSemana];
+    if (!horariosFuncionamento || !horariosFuncionamento.aberto) return [];
+    const horarios: string[] = [];
+    const [hIni, mIni] = horariosFuncionamento.abertura.split(":").map(Number);
+    const [hFim, mFim] = horariosFuncionamento.fechamento.split(":").map(Number);
+    for (let h = hIni; h < hFim || (h === hFim && mIni < mFim); h++) {
+      for (let m = (h === hIni ? mIni : 0); m < 60; m += 30) {
+        if (h > hFim || (h === hFim && m >= mFim)) break;
+        const hora = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
+        horarios.push(hora);
+      }
     }
-    return ["dia-calendario"];
-  };
+    // Filtrar horários já ocupados pelo barbeiro
+    // (simplificado: só horários do dia e barbeiro)
+    const agsDia = eventos.filter(ev => ev.extendedProps && ev.extendedProps.colaboradorId === form.colaboradorId && ev.extendedProps.data === form.data);
+    const ocupados = agsDia.map(ev => ev.extendedProps?.hora).filter(Boolean);
+    return horarios.filter(h => !ocupados.includes(h));
+  }
+
+  // Função para saber se a unidade está aberta no dia selecionado
+  function unidadeAbertaNoDia(unidadeId: string, data: string) {
+    if (!unidadeId || !data) return false;
+    const unidade = unidades.find(u => u.id === unidadeId);
+    if (!unidade) return false;
+    const diaSemana = getDiaSemanaFirestore(data);
+    const horariosFuncionamento = unidade.horariosFuncionamento?.[diaSemana];
+    return !!(horariosFuncionamento && horariosFuncionamento.aberto);
+  }
+
+  // Função para saber se o horário está dentro do funcionamento da unidade
+  function horarioDentroFuncionamento(unidadeId: string, data: string, hora: string) {
+    if (!unidadeId || !data || !hora) return false;
+    const unidade = unidades.find(u => u.id === unidadeId);
+    if (!unidade) return false;
+    const diaSemana = getDiaSemanaFirestore(data);
+    const horariosFuncionamento = unidade.horariosFuncionamento?.[diaSemana];
+    if (!horariosFuncionamento || !horariosFuncionamento.aberto) return false;
+    const [hIni, mIni] = horariosFuncionamento.abertura.split(":").map(Number);
+    const [hFim, mFim] = horariosFuncionamento.fechamento.split(":").map(Number);
+    const [h, m] = hora.split(":").map(Number);
+    const minutos = h * 60 + m;
+    const minutosIni = hIni * 60 + mIni;
+    const minutosFim = hFim * 60 + mFim;
+    return minutos >= minutosIni && minutos < minutosFim;
+  }
 
   // Handler para clique em dia/slot
   const aoClicarNoDia = (info: DateClickInfo) => {
-    // Detecta se está em timeGridWeek ou timeGridDay
-    let hora = "08:00";
-    if (calendarRef.current) {
-      const viewType = calendarRef.current.getApi().view.type;
-      if (viewType === "timeGridWeek" || viewType === "timeGridDay") {
-        // info.date é um Date com hora
-        hora = info.date.toTimeString().slice(0, 5);
-      }
+    if (!unidadeSelecionada) return;
+    const data = info.dateStr;
+    // Busca a unidade e verifica o funcionamento do dia
+    const unidade = unidades.find(u => u.id === unidadeSelecionada);
+    if (!unidade) return;
+    const diaSemana = getDiaSemanaFirestore(data);
+    const horariosFuncionamento = unidade.horariosFuncionamento?.[diaSemana];
+    if (!horariosFuncionamento || horariosFuncionamento.aberto === false) {
+      setModalFechado({ aberto: true, dia: data });
+      return;
     }
-    setForm({
-      data: info.dateStr,
-      hora,
-      clienteId: clientes[0]?.id || "",
-      colaboradorId: colaboradores[0]?.id || "",
-      servicoId: servicos[0]?.id || "",
-      observacoes: "",
-    });
+    setForm(f => ({
+      ...f,
+      data,
+      hora: "", // Limpa o campo de horário, será preenchido após selecionar profissional/serviço
+    }));
     setErro("");
     setSucesso("");
-    setModalAberto(true);
+    setModalNovoOpen(true);
   };
 
   // Abrir modal para editar agendamento
@@ -127,24 +213,6 @@ export default function Calendario() {
     setSucesso("");
     setModalEditar(true);
   };
-
-  // Handler para clique em slot de horário (visualização de semana/dia)
-  function aoSelecionarHorario(info: { startStr: string }) {
-    // startStr vem no formato 'YYYY-MM-DDTHH:mm:ss...'
-    const [data, horaCompleta] = info.startStr.split('T');
-    const hora = horaCompleta ? horaCompleta.slice(0, 5) : "08:00";
-    setForm({
-      data,
-      hora,
-      clienteId: clientes[0]?.id || "",
-      colaboradorId: colaboradores[0]?.id || "",
-      servicoId: servicos[0]?.id || "",
-      observacoes: "",
-    });
-    setErro("");
-    setSucesso("");
-    setModalAberto(true);
-  }
 
   // Salvar novo agendamento
   const handleSalvar = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -172,7 +240,7 @@ export default function Calendario() {
         servicoNome: servico?.nomeDoServico || "",
       } as Omit<Agendamento, "id" | "criadoEm">);
       setSucesso("Agendamento criado com sucesso!");
-      setModalAberto(false);
+      setModalNovoOpen(false);
       buscarAgendamentos();
     } catch (err) {
       if (err instanceof Error) setErro(err.message);
@@ -280,20 +348,20 @@ export default function Calendario() {
   }
 
   // Modal de Novo Agendamento
-  const ModalNovoAgendamento = modalAberto && typeof window !== "undefined" && document.body && createPortal(
+  const ModalNovoAgendamento = modalNovoOpen && typeof window !== "undefined" && document.body && createPortal(
     <div
-      className={`fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300 ${modalAberto ? 'opacity-100' : 'opacity-0'}`}
-      onClick={e => { if (e.target === e.currentTarget) setModalAberto(false); }}
+      className={`fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300 ${modalNovoOpen ? 'opacity-100' : 'opacity-0'}`}
+      onClick={e => { if (e.target === e.currentTarget) setModalNovoOpen(false); }}
     >
       <div
         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl border border-gray-200 relative
           transform transition-all duration-300
-          ${modalAberto ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-80 scale-95'}
+          ${modalNovoOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-80 scale-95'}
           overflow-y-auto max-h-[90vh]`}
       >
         <button
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-          onClick={() => setModalAberto(false)}
+          onClick={() => setModalNovoOpen(false)}
           aria-label="Fechar"
           type="button"
         >
@@ -301,87 +369,115 @@ export default function Calendario() {
         </button>
         <h2 className="text-2xl font-bold mb-6 text-center text-black">Novo Agendamento</h2>
         <form onSubmit={handleSalvar} className="flex flex-col gap-4">
-          <div className="relative">
-            <input
-              type="date"
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-              value={formatarDataInput(form.data)}
-              onChange={e => setForm((f: typeof form) => ({ ...f, data: e.target.value }))}
-              required
-              placeholder=" "
-            />
-            <label
-              className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
-                peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
-                peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
-                peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
-            >
-              Data
-            </label>
-          </div>
+          {/* Unidade */}
           <div className="relative">
             <select
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-              value={formatarHoraInput(form.hora)}
-              onChange={e => setForm((f: typeof form) => ({ ...f, hora: e.target.value }))}
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+              value={unidadeSelecionada}
+              onChange={e => setUnidadeSelecionada(e.target.value)}
               required
+              disabled={loadingUnidades}
             >
-              <option value="" disabled>Selecione o horário</option>
-              {gerarHorariosValidos(form.servicoId).map(h => (
-                <option key={h} value={h}>{h}</option>
+              <option value="">Selecione a unidade</option>
+              {unidades.map(u => (
+                <option key={u.id} value={u.id}>{u.nome}</option>
               ))}
             </select>
-            <label
-              className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
-                peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
-                peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
-                peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
-            >
-              Hora
-            </label>
+            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Unidade *</label>
           </div>
+          {/* Serviço */}
           <div className="relative">
             <select
               className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={form.clienteId}
-              onChange={e => setForm((f: typeof form) => ({ ...f, clienteId: e.target.value }))}
+              value={form.servicoId || ""}
+              onChange={e => setForm(f => ({ ...f, servicoId: e.target.value }))}
               required
             >
-              {clientes.map(c => <option key={c.id} value={c.id}>{c.nomeCompleto}</option>)}
+              <option value="">Selecione o serviço</option>
+              {servicosAtivos.map(s => (
+                <option key={s.id} value={s.id}>{s.nomeDoServico}</option>
+              ))}
             </select>
-            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Cliente</label>
+            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Serviço *</label>
           </div>
+          {/* Profissional */}
           <div className="relative">
             <select
               className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={form.colaboradorId}
-              onChange={e => setForm((f: typeof form) => ({ ...f, colaboradorId: e.target.value }))}
+              value={form.colaboradorId || ""}
+              onChange={e => setForm(f => ({ ...f, colaboradorId: e.target.value, hora: "" }))}
               required
+              disabled={!unidadeSelecionada}
             >
-              {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nomeCompleto}</option>)}
+              <option value="">Selecione o profissional</option>
+              {barbeirosUnidade.map(c => (
+                <option key={c.id} value={c.id}>{c.nomeCompleto}</option>
+              ))}
             </select>
-            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Colaborador</label>
+            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Profissional *</label>
           </div>
+          {/* Data */}
           <div className="relative">
-            <select
+            <label className="block mb-1 text-xs text-black font-semibold">Data *</label>
+            <input
+              type="date"
               className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={form.servicoId}
-              onChange={e => setForm((f: typeof form) => ({ ...f, servicoId: e.target.value }))}
+              value={formatarDataInput(form.data)}
+              onChange={e => {
+                setForm(f => ({ ...f, data: e.target.value, hora: "" }));
+              }}
               required
-            >
-              {servicos.map(s => <option key={s.id} value={s.id}>{s.nomeDoServico}</option>)}
-            </select>
-            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Serviço</label>
+              min={getHojeISO()}
+            />
           </div>
+          {/* Horário */}
           <div className="relative">
+            <label className="block mb-1 text-xs text-black font-semibold">Horário *</label>
+            {unidadeSelecionada && form.data && unidadeAbertaNoDia(unidadeSelecionada, form.data) ? (
+              <select
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={form.hora || ""}
+                onChange={e => setForm(f => ({ ...f, hora: e.target.value }))}
+                required
+                disabled={!form.data || !form.colaboradorId || !unidadeSelecionada || gerarHorariosDisponiveis().length === 0}
+              >
+                <option value="">Selecione o horário</option>
+                {gerarHorariosDisponiveis().map(h => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">Unidade fechada neste dia</div>
+            )}
+          </div>
+          {/* Cliente */}
+          <div className="relative">
+            <label className="block mb-1 text-xs text-black font-semibold">Cliente *</label>
             <input
               type="text"
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-              value={form.observacoes}
-              onChange={e => setForm((f: typeof form) => ({ ...f, observacoes: e.target.value }))}
-              placeholder=" "
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+              placeholder="Buscar cliente pelo nome..."
+              value={clientes.find(c => c.id === form.clienteId)?.nomeCompleto || ""}
+              onChange={e => {
+                const nome = e.target.value.toLowerCase();
+                const clienteEncontrado = clientes.find(c => c.nomeCompleto.toLowerCase().includes(nome));
+                setForm(f => ({ ...f, clienteId: clienteEncontrado ? clienteEncontrado.id : "" }));
+              }}
+              required
+              autoComplete="off"
             />
-            <label className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none">Observações</label>
+          </div>
+          {/* Observações */}
+          <div className="relative">
+            <label className="block mb-1 text-xs text-black font-semibold">Observações</label>
+            <input
+              type="text"
+              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+              value={form.observacoes ?? ""}
+              onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
+              placeholder="Digite observações (opcional)"
+              autoComplete="off"
+            />
           </div>
           {erro && <span className="text-red-500 text-center">{erro}</span>}
           {sucesso && <span className="text-green-600 text-center">{sucesso}</span>}
@@ -389,13 +485,14 @@ export default function Calendario() {
             <button
               type="submit"
               className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
+              disabled={loadingUnidades}
             >
-              Salvar
+              {loadingUnidades ? "Carregando..." : "Agendar"}
             </button>
             <button
               type="button"
               className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
-              onClick={() => setModalAberto(false)}
+              onClick={() => setModalNovoOpen(false)}
             >
               Cancelar
             </button>
@@ -539,8 +636,43 @@ export default function Calendario() {
     document.body
   );
 
+  // Limpar erro ao trocar unidade, data ou profissional
+  useEffect(() => {
+    setErro("");
+  }, [unidadeSelecionada, form.data, form.colaboradorId]);
+
   return (
     <div className="p-4 bg-white rounded shadow">
+      {/* Modal de aviso de unidade fechada */}
+      {modalFechado.aberto && typeof window !== "undefined" && document.body &&
+        createPortal(
+          <div className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
+            onClick={e => { if (e.target === e.currentTarget) setModalFechado({ aberto: false, dia: "" }); }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-200 relative">
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                onClick={() => setModalFechado({ aberto: false, dia: "" })}
+                aria-label="Fechar"
+                type="button"
+              >
+                ×
+              </button>
+              <h2 className="text-2xl font-bold mb-6 text-center text-black">Unidade Fechada</h2>
+              <p className="text-center text-black mb-8">A unidade está fechada neste dia.<br/>Escolha outro dia para agendar.</p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => setModalFechado({ aberto: false, dia: "" })}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      }
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -549,8 +681,7 @@ export default function Calendario() {
         events={eventos}
         dateClick={aoClicarNoDia}
         eventClick={aoClicarEvento}
-        select={aoSelecionarHorario}
-        selectable
+        navLinks={false}
         eventColor="#3b82f6"
         eventTextColor="#fff"
         nowIndicator
@@ -571,7 +702,12 @@ export default function Calendario() {
           hour12: false,
         }}
         height={altura}
-        dayCellClassNames={classeDia}
+        selectAllow={info => {
+          if (!unidadeSelecionada) return false;
+          const data = info.startStr.split("T")[0];
+          const hora = info.startStr.split("T")[1]?.slice(0,5);
+          return unidadeAbertaNoDia(unidadeSelecionada, data) && horarioDentroFuncionamento(unidadeSelecionada, data, hora);
+        }}
       />
 
       {ModalNovoAgendamento}
