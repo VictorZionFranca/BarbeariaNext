@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
-import { FaUserCheck, FaUserTimes } from "react-icons/fa";
+import { FaUserCheck, FaUserTimes, FaBirthdayCake } from "react-icons/fa";
 
 // Interface para definir a estrutura de uma pessoa/cliente
 interface Pessoa {
@@ -10,6 +10,7 @@ interface Pessoa {
   tipoPessoa: number;
   criadoEm?: Timestamp;
   dataInativacao?: Timestamp;
+  dataNascimento?: string; // Adicionando campo para aniversário
   [key: string]: unknown; // Para outras propriedades que possam existir
 }
 
@@ -39,6 +40,9 @@ export default function DashboardClientes() {
   const [loading, setLoading] = useState(true);
   const [periodoAtivos, setPeriodoAtivos] = useState("total");
   const [periodoInativos, setPeriodoInativos] = useState("total");
+  const [showModal, setShowModal] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [shouldRenderModal, setShouldRenderModal] = useState(false);
 
   useEffect(() => {
     async function fetchClientes() {
@@ -52,6 +56,24 @@ export default function DashboardClientes() {
     }
     fetchClientes();
   }, []);
+
+  // Controla animação de entrada/saída
+  useEffect(() => {
+    if (showModal) {
+      setShouldRenderModal(true);
+      setTimeout(() => setModalVisible(true), 10);
+    } else {
+      setModalVisible(false);
+    }
+  }, [showModal]);
+
+  // Remove o modal do DOM após a animação de saída
+  useEffect(() => {
+    if (!modalVisible && shouldRenderModal) {
+      const timeout = setTimeout(() => setShouldRenderModal(false), 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [modalVisible, shouldRenderModal]);
 
   const now = new Date();
 
@@ -77,6 +99,32 @@ export default function DashboardClientes() {
     return inativosTotal;
   };
 
+  // Aniversariantes
+  function parseDataNascimento(dataNascimento?: string): Date | null {
+    if (!dataNascimento) return null;
+    // Espera-se formato dd/MM/yyyy ou yyyy-MM-dd
+    if (dataNascimento.includes("/")) {
+      const [dia, mes, ano] = dataNascimento.split("/").map(Number);
+      if (!dia || !mes || !ano) return null;
+      return new Date(ano, mes - 1, dia);
+    } else if (dataNascimento.includes("-")) {
+      // yyyy-MM-dd
+      const [ano, mes, dia] = dataNascimento.split("-").map(Number);
+      if (!dia || !mes || !ano) return null;
+      return new Date(ano, mes - 1, dia);
+    }
+    return null;
+  }
+
+  const aniversariantesMes = clientes.filter((c) => {
+    const data = parseDataNascimento(c.dataNascimento as string);
+    return data && data.getMonth() === now.getMonth();
+  });
+  const aniversariantesDia = aniversariantesMes.filter((c) => {
+    const data = parseDataNascimento(c.dataNascimento as string);
+    return data && data.getDate() === now.getDate();
+  });
+
   return (
     <div className="flex flex-col min-h-[78vh]">
       <div className="mb-6">
@@ -85,7 +133,7 @@ export default function DashboardClientes() {
       {loading ? (
         <div className="text-center text-gray-500">Carregando dados...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Bloco Ativos */}
           <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md">
             <div className="flex items-center gap-3 mb-2">
@@ -139,6 +187,77 @@ export default function DashboardClientes() {
               <span className="text-sm text-gray-500 mb-1">{periodOptions.find(p => p.value === periodoInativos)?.label}</span>
             </div>
           </section>
+
+          {/* Bloco Aniversariantes */}
+          <section
+            className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => setShowModal(true)}
+            title="Clique para ver todos os aniversariantes do mês"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <FaBirthdayCake className="text-yellow-500 text-2xl" />
+            </div>
+            <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide mb-2">Aniversariantes do Mês</span>
+            <div className="flex items-end gap-3">
+              <span className="text-4xl font-bold text-gray-900">{aniversariantesMes.length}</span>
+              <span className="text-sm text-gray-500 mb-1">Mês</span>
+            </div>
+            {aniversariantesDia.length > 0 && (
+              <div className="mt-2">
+                <span className="block text-xs text-gray-700 font-semibold mb-1">Hoje:</span>
+                <ul className="list-disc list-inside text-sm text-gray-800">
+                  {aniversariantesDia.map((c) => (
+                    <li key={c.id} className="font-medium">
+                      {typeof c.nomeCompleto === 'string' && c.nomeCompleto.trim() !== '' ? c.nomeCompleto : "(Sem nome)"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+
+          {/* Modal de aniversariantes do mês */}
+          {shouldRenderModal && (
+            <div
+              className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 transition-opacity duration-300 ${modalVisible ? 'opacity-100' : 'opacity-0'}`}
+              onClick={() => setShowModal(false)}
+            >
+              <div
+                className={`bg-white rounded-xl shadow-lg p-6 max-w-md w-full relative transform transition-all duration-300 ${modalVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-xl font-bold"
+                  onClick={() => setShowModal(false)}
+                  aria-label="Fechar"
+                >
+                  ×
+                </button>
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <FaBirthdayCake className="text-yellow-500" /> Aniversariantes do mês
+                </h2>
+                {aniversariantesMes.length === 0 ? (
+                  <div className="text-gray-500 text-center">Nenhum aniversariante neste mês.</div>
+                ) : (
+                  <ul className="list-disc list-inside space-y-1 max-h-64 overflow-y-auto">
+                    {aniversariantesMes.map((c) => (
+                      <li key={c.id} className="font-medium">
+                        {typeof c.nomeCompleto === 'string' && c.nomeCompleto.trim() !== '' ? c.nomeCompleto : "(Sem nome)"}
+                        {c.dataNascimento && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            {(() => {
+                              const data = parseDataNascimento(c.dataNascimento as string);
+                              return data ? `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}` : "";
+                            })()}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {/*
