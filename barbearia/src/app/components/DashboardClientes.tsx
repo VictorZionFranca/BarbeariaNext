@@ -95,9 +95,14 @@ export default function DashboardClientes() {
     return null;
   }
 
+  // Novo filtro: apenas aniversariantes do mês a partir do dia de hoje
   const aniversariantesMes = clientes.filter((c) => {
     const data = parseDataNascimento(c.dataNascimento as string);
-    return data && data.getMonth() === now.getMonth();
+    return (
+      data &&
+      data.getMonth() === now.getMonth() &&
+      data.getDate() >= now.getDate() // Só a partir do dia de hoje
+    );
   });
 
   return (
