@@ -23,6 +23,8 @@ export interface HorariosFuncionamento {
         aberto: boolean;
         abertura: string; // formato 'HH:mm'
         fechamento: string; // formato 'HH:mm'
+        intervaloInicio?: string; // formato 'HH:mm'
+        intervaloFim?: string; // formato 'HH:mm'
     };
 }
 
@@ -47,13 +49,13 @@ export async function criarUnidade(unidade: Omit<Unidade, "id" | "dataCriacao" |
 
         // Horários padrão: fechado todos os dias
         const horariosPadrao: HorariosFuncionamento = {
-            domingo: { aberto: false, abertura: "08:00", fechamento: "20:00" },
-            segunda: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-            terca: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-            quarta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-            quinta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-            sexta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-            sabado: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+            domingo: { aberto: false, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+            segunda: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+            terca: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+            quarta: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+            quinta: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+            sexta: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+            sabado: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
         };
 
         const unidadeCompleta = {

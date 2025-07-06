@@ -17,13 +17,13 @@ interface Unidade {
     cep?: string;
     ativo: boolean;
     horariosFuncionamento?: {
-        domingo?: { aberto: boolean; abertura: string; fechamento: string };
-        segunda?: { aberto: boolean; abertura: string; fechamento: string };
-        terca?: { aberto: boolean; abertura: string; fechamento: string };
-        quarta?: { aberto: boolean; abertura: string; fechamento: string };
-        quinta?: { aberto: boolean; abertura: string; fechamento: string };
-        sexta?: { aberto: boolean; abertura: string; fechamento: string };
-        sabado?: { aberto: boolean; abertura: string; fechamento: string };
+        domingo?: { aberto: boolean; abertura: string; fechamento: string; intervaloInicio?: string; intervaloFim?: string };
+        segunda?: { aberto: boolean; abertura: string; fechamento: string; intervaloInicio?: string; intervaloFim?: string };
+        terca?: { aberto: boolean; abertura: string; fechamento: string; intervaloInicio?: string; intervaloFim?: string };
+        quarta?: { aberto: boolean; abertura: string; fechamento: string; intervaloInicio?: string; intervaloFim?: string };
+        quinta?: { aberto: boolean; abertura: string; fechamento: string; intervaloInicio?: string; intervaloFim?: string };
+        sexta?: { aberto: boolean; abertura: string; fechamento: string; intervaloInicio?: string; intervaloFim?: string };
+        sabado?: { aberto: boolean; abertura: string; fechamento: string; intervaloInicio?: string; intervaloFim?: string };
     };
 }
 
@@ -43,6 +43,8 @@ interface HorarioDia {
     aberto: boolean;
     abertura: string;
     fechamento: string;
+    intervaloInicio?: string;
+    intervaloFim?: string;
 }
 
 interface FormUnidade {
@@ -60,13 +62,13 @@ interface FormUnidade {
 }
 
 const horariosPadrao: Record<keyof typeof diasSemanaObj, HorarioDia> = {
-    domingo: { aberto: false, abertura: "08:00", fechamento: "20:00" },
-    segunda: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-    terca: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-    quarta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-    quinta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-    sexta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
-    sabado: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+    domingo: { aberto: false, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+    segunda: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+    terca: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+    quarta: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+    quinta: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+    sexta: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
+    sabado: { aberto: true, abertura: "08:00", fechamento: "20:00", intervaloInicio: "12:00", intervaloFim: "13:00" },
 };
 
 const camposIniciais: FormUnidade = {
@@ -727,36 +729,65 @@ export default function UnidadesManager() {
                                 {/* Horários de Funcionamento */}
                                 <div className="border rounded-lg p-4 mb-2 bg-gray-50">
                                     <span className="block font-semibold text-gray-700 mb-2">Horários de Funcionamento</span>
-                                    <div className="flex flex-col gap-2">
+                                    <div className="flex flex-col gap-4">
                                         {diasSemana.map(([key, label]) => (
-                                            <div key={key} className="flex items-center gap-2 border-b pb-2 last:border-b-0">
-                                                <label className="flex items-center gap-2 min-w-[90px] font-semibold text-black">
-                                                    <input
-                                                        type="checkbox"
-                                                        name={`horariosFuncionamento.${key}.aberto`}
-                                                        checked={form.horariosFuncionamento[key].aberto}
-                                                        onChange={handleChange}
-                                                        className="accent-green-600"
-                                                    />
-                                                    <span>{label}</span>
-                                                </label>
-                                                <input
-                                                    type="time"
-                                                    name={`horariosFuncionamento.${key}.abertura`}
-                                                    value={form.horariosFuncionamento[key].abertura}
-                                                    onChange={handleChange}
-                                                    disabled={!form.horariosFuncionamento[key].aberto}
-                                                    className="border rounded p-1 text-black w-[90px]"
-                                                />
-                                                <span className="text-black">às</span>
-                                                <input
-                                                    type="time"
-                                                    name={`horariosFuncionamento.${key}.fechamento`}
-                                                    value={form.horariosFuncionamento[key].fechamento}
-                                                    onChange={handleChange}
-                                                    disabled={!form.horariosFuncionamento[key].aberto}
-                                                    className="border rounded p-1 text-black w-[90px]"
-                                                />
+                                            <div key={key} className="border rounded-lg p-3 bg-white">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <label className="flex items-center gap-2 font-semibold text-black">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`horariosFuncionamento.${key}.aberto`}
+                                                            checked={form.horariosFuncionamento[key].aberto}
+                                                            onChange={handleChange}
+                                                            className="accent-green-600"
+                                                        />
+                                                        <span>{label}</span>
+                                                    </label>
+                                                </div>
+                                                {form.horariosFuncionamento[key].aberto && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-gray-600 min-w-[60px]">Abertura:</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.abertura`}
+                                                                value={form.horariosFuncionamento[key].abertura}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-gray-600 min-w-[60px]">Fechamento:</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.fechamento`}
+                                                                value={form.horariosFuncionamento[key].fechamento}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-gray-600 min-w-[60px]">Intervalo:</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.intervaloInicio`}
+                                                                value={form.horariosFuncionamento[key].intervaloInicio || ""}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                                placeholder="Início"
+                                                            />
+                                                            <span className="text-sm text-gray-600">às</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.intervaloFim`}
+                                                                value={form.horariosFuncionamento[key].intervaloFim || ""}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                                placeholder="Fim"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -1007,36 +1038,65 @@ export default function UnidadesManager() {
                                 {/* Horários de Funcionamento */}
                                 <div className="border rounded-lg p-4 mb-2 bg-gray-50">
                                     <span className="block font-semibold text-gray-700 mb-2">Horários de Funcionamento</span>
-                                    <div className="flex flex-col gap-2">
+                                    <div className="flex flex-col gap-4">
                                         {diasSemana.map(([key, label]) => (
-                                            <div key={key} className="flex items-center gap-2 border-b pb-2 last:border-b-0">
-                                                <label className="flex items-center gap-2 min-w-[90px] font-semibold text-black">
-                                                    <input
-                                                        type="checkbox"
-                                                        name={`horariosFuncionamento.${key}.aberto`}
-                                                        checked={form.horariosFuncionamento[key].aberto}
-                                                        onChange={handleChange}
-                                                        className="accent-green-600"
-                                                    />
-                                                    <span>{label}</span>
-                                                </label>
-                                                <input
-                                                    type="time"
-                                                    name={`horariosFuncionamento.${key}.abertura`}
-                                                    value={form.horariosFuncionamento[key].abertura}
-                                                    onChange={handleChange}
-                                                    disabled={!form.horariosFuncionamento[key].aberto}
-                                                    className="border rounded p-1 text-black w-[90px]"
-                                                />
-                                                <span className="text-black">às</span>
-                                                <input
-                                                    type="time"
-                                                    name={`horariosFuncionamento.${key}.fechamento`}
-                                                    value={form.horariosFuncionamento[key].fechamento}
-                                                    onChange={handleChange}
-                                                    disabled={!form.horariosFuncionamento[key].aberto}
-                                                    className="border rounded p-1 text-black w-[90px]"
-                                                />
+                                            <div key={key} className="border rounded-lg p-3 bg-white">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <label className="flex items-center gap-2 font-semibold text-black">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`horariosFuncionamento.${key}.aberto`}
+                                                            checked={form.horariosFuncionamento[key].aberto}
+                                                            onChange={handleChange}
+                                                            className="accent-green-600"
+                                                        />
+                                                        <span>{label}</span>
+                                                    </label>
+                                                </div>
+                                                {form.horariosFuncionamento[key].aberto && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-gray-600 min-w-[60px]">Abertura:</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.abertura`}
+                                                                value={form.horariosFuncionamento[key].abertura}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-gray-600 min-w-[60px]">Fechamento:</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.fechamento`}
+                                                                value={form.horariosFuncionamento[key].fechamento}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-gray-600 min-w-[60px]">Intervalo:</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.intervaloInicio`}
+                                                                value={form.horariosFuncionamento[key].intervaloInicio || ""}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                                placeholder="Início"
+                                                            />
+                                                            <span className="text-sm text-gray-600">às</span>
+                                                            <input
+                                                                type="time"
+                                                                name={`horariosFuncionamento.${key}.intervaloFim`}
+                                                                value={form.horariosFuncionamento[key].intervaloFim || ""}
+                                                                onChange={handleChange}
+                                                                className="border rounded p-2 text-black w-[100px]"
+                                                                placeholder="Fim"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

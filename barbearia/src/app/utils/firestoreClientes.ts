@@ -284,4 +284,32 @@ export async function buscarClientePorCPF(cpf: string) {
         id: doc.id,
         ...doc.data()
     })) as Cliente[];
+}
+
+// Buscar clientes por nome (busca parcial)
+export async function buscarClientesPorNome(nome: string) {
+    const clientesRef = collection(db, "pessoas");
+    const q = query(
+        clientesRef, 
+        where("dataInativacao", "==", null), 
+        where("tipoPessoa", "==", 1)
+    );
+    const snapshot = await getDocs(q);
+    
+    const clientes = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as Cliente[];
+    
+    // Se não há termo de busca, retorna todos os clientes
+    if (!nome || nome.trim().length === 0) {
+        return clientes.slice(0, 20); // Limita a 20 resultados para performance
+    }
+    
+    // Filtrar por nome (case insensitive)
+    const nomeBusca = nome.toLowerCase().trim();
+    return clientes.filter(cliente => 
+        cliente.nomeCompleto.toLowerCase().includes(nomeBusca) ||
+        cliente.email.toLowerCase().includes(nomeBusca)
+    ).slice(0, 10); // Limitar a 10 resultados
 } 
