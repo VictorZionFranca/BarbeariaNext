@@ -178,6 +178,7 @@ export default function ColaboradoresInformacoesManager() {
             <div className="flex mb-4 items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="relative w-[400px]">
+                        <h1 className="text-2xl font-bold text-black my-8">Informações Profissionais</h1>
                         <input
                             type="text"
                             placeholder="Buscar colaborador..."
@@ -197,80 +198,109 @@ export default function ColaboradoresInformacoesManager() {
                         )}
                     </div>
                 </div>
-                <h1 className="text-2xl font-bold text-gray-800">Informações Profissionais</h1>
             </div>
 
-            <table className="w-full bg-white text-black rounded-xl shadow overflow-hidden">
-                <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200">
-                        <th className="p-4 text-left font-semibold text-gray-700">Nome</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Email</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Unidade</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Data Admissão</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Folgas</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Férias</th>
-                        <th className="p-4 text-left font-semibold text-gray-700">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {colaboradoresFiltrados.length === 0 ? (
-                        <tr>
-                            <td colSpan={7} className="p-6 text-center text-gray-500">
-                                Nenhum colaborador encontrado.
-                            </td>
-                        </tr>
-                    ) : (
-                        colaboradoresFiltrados.map((c) => {
-                            const info = getInformacoesColaborador(c.id!);
-                            return (
-                                <tr
-                                    key={c.id}
-                                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                                >
-                                    <td className="p-4 align-middle">{c.nomeCompleto}</td>
-                                    <td className="p-4 align-middle">{c.email}</td>
-                                    <td className="p-4 align-middle">{info?.unidadeNome || "Não definida"}</td>
-                                    <td className="p-4 align-middle">
-                                        {info?.dataAdmissao ? formatarData(info.dataAdmissao) : "Não definida"}
-                                    </td>
-                                    <td className="p-4 align-middle">
-                                        {info?.folgas && info.folgas.length > 0 
-                                            ? info.folgas.join(", ") 
-                                            : "Não definidas"
-                                        }
-                                    </td>
-                                    <td className="p-4 align-middle">
-                                        {info?.periodoFeriasInicio && info?.periodoFeriasFim
-                                            ? `${formatarData(info.periodoFeriasInicio)} - ${formatarData(info.periodoFeriasFim)}`
-                                            : "Não definidas"
-                                        }
-                                    </td>
-                                    <td className="p-4 align-middle">
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleEditar(c)}
-                                                className="bg-blue-500 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-blue-700"
-                                                title="Editar Informações"
-                                            >
-                                                <FaPencilAlt className="h-4 w-4" />
-                                            </button>
-                                            {info && (
-                                                <button
-                                                    onClick={() => handleExcluir(c.id!)}
-                                                    className="bg-red-600 text-white px-3 py-2 rounded-lg flex items-center justify-center transition-colors duration-200 hover:bg-red-800"
-                                                    title="Excluir Informações"
-                                                >
-                                                    <FaTrash className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                        </div>
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-200">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Nome
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Email
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Unidade
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Data Admissão
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Folgas
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Férias
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Ações
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {colaboradoresFiltrados.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                                        Nenhum colaborador encontrado.
                                     </td>
                                 </tr>
-                            );
-                        })
-                    )}
-                </tbody>
-            </table>
+                            ) : (
+                                colaboradoresFiltrados.map((c) => {
+                                    const info = getInformacoesColaborador(c.id!);
+                                    return (
+                                        <tr
+                                            key={c.id}
+                                            className="hover:bg-gray-50 transition-colors"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-medium text-gray-900">{c.nomeCompleto}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">{c.email}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">{info?.unidadeNome || "Não definida"}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">
+                                                    {info?.dataAdmissao ? formatarData(info.dataAdmissao) : "Não definida"}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">
+                                                    {info?.folgas && info.folgas.length > 0 
+                                                        ? info.folgas.join(", ") 
+                                                        : "Não definidas"
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-gray-500">
+                                                    {info?.periodoFeriasInicio && info?.periodoFeriasFim
+                                                        ? `${formatarData(info.periodoFeriasInicio)} - ${formatarData(info.periodoFeriasFim)}`
+                                                        : "Não definidas"
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleEditar(c)}
+                                                        className="p-2 bg-yellow-100 text-yellow-600 hover:bg-yellow-200 rounded-lg transition-colors duration-200"
+                                                        title="Editar Informações"
+                                                    >
+                                                        <FaPencilAlt className="h-5 w-5" />
+                                                    </button>
+                                                    {info && (
+                                                        <button
+                                                            onClick={() => handleExcluir(c.id!)}
+                                                            className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors duration-200"
+                                                            title="Excluir Informações"
+                                                        >
+                                                            <FaTrash className="h-5 w-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             {/* Modal de Edição */}
             {modalEditar && typeof window !== "undefined" && document.body &&

@@ -78,23 +78,27 @@ export default function DashboardClientes() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto py-8">
+    <div className="flex flex-col min-h-[78vh]">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-black mb-2">Resumo de Clientes</h2>
+        <h1 className="text-2xl font-bold text-black my-8">Dashboard de Clientes</h1>
       </div>
       {loading ? (
         <div className="text-center text-gray-500">Carregando dados...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Bloco Ativos */}
-          <section className="bg-white border border-neutral-200 rounded-lg p-4 flex flex-col gap-2 min-h-[110px] shadow-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <FaUserCheck className="text-neutral-400 text-xl" />
+          <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md">
+            <div className="flex items-center gap-3 mb-2">
+              <FaUserCheck className="text-green-600 text-2xl" />
               <div className="flex gap-1">
                 {periodOptions.map((opt) => (
                   <button
                     key={opt.value}
-                    className={`px-2 py-0.5 rounded text-xs font-medium border transition-all ${periodoAtivos === opt.value ? "bg-neutral-800 text-white border-neutral-800" : "bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-100"}`}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium border transition-all duration-200 ${
+                      periodoAtivos === opt.value 
+                        ? "bg-green-600 text-white border-green-600" 
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    }`}
                     onClick={() => setPeriodoAtivos(opt.value)}
                   >
                     {opt.label}
@@ -102,21 +106,26 @@ export default function DashboardClientes() {
                 ))}
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-semibold uppercase tracking-wide mb-1">Clientes Ativos</span>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold text-neutral-900">{getAtivos()}</span>
-              <span className="text-xs text-neutral-500">{periodOptions.find(p => p.value === periodoAtivos)?.label}</span>
+            <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide mb-2">Clientes Ativos</span>
+            <div className="flex items-end gap-3">
+              <span className="text-4xl font-bold text-gray-900">{getAtivos()}</span>
+              <span className="text-sm text-gray-500 mb-1">{periodOptions.find(p => p.value === periodoAtivos)?.label}</span>
             </div>
           </section>
+          
           {/* Bloco Inativos */}
-          <section className="bg-white border border-neutral-200 rounded-lg p-4 flex flex-col gap-2 min-h-[110px] shadow-sm">
-            <div className="flex items-center gap-2 mb-1">
-              <FaUserTimes className="text-neutral-400 text-xl" />
+          <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md">
+            <div className="flex items-center gap-3 mb-2">
+              <FaUserTimes className="text-red-600 text-2xl" />
               <div className="flex gap-1">
                 {periodOptions.map((opt) => (
                   <button
                     key={opt.value}
-                    className={`px-2 py-0.5 rounded text-xs font-medium border transition-all ${periodoInativos === opt.value ? "bg-neutral-800 text-white border-neutral-800" : "bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-100"}`}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium border transition-all duration-200 ${
+                      periodoInativos === opt.value 
+                        ? "bg-red-600 text-white border-red-600" 
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    }`}
                     onClick={() => setPeriodoInativos(opt.value)}
                   >
                     {opt.label}
@@ -124,10 +133,10 @@ export default function DashboardClientes() {
                 ))}
               </div>
             </div>
-            <span className="text-xs text-neutral-500 font-semibold uppercase tracking-wide mb-1">Clientes Perdidos</span>
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-bold text-neutral-900">{getInativos()}</span>
-              <span className="text-xs text-neutral-500">{periodOptions.find(p => p.value === periodoInativos)?.label}</span>
+            <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide mb-2">Clientes Perdidos</span>
+            <div className="flex items-end gap-3">
+              <span className="text-4xl font-bold text-gray-900">{getInativos()}</span>
+              <span className="text-sm text-gray-500 mb-1">{periodOptions.find(p => p.value === periodoInativos)?.label}</span>
             </div>
           </section>
         </div>
