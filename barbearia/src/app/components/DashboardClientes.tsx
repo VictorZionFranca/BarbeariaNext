@@ -40,9 +40,6 @@ export default function DashboardClientes() {
   const [loading, setLoading] = useState(true);
   const [periodoAtivos, setPeriodoAtivos] = useState("total");
   const [periodoInativos, setPeriodoInativos] = useState("total");
-  const [showModal, setShowModal] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [shouldRenderModal, setShouldRenderModal] = useState(false);
 
   useEffect(() => {
     async function fetchClientes() {
@@ -56,24 +53,6 @@ export default function DashboardClientes() {
     }
     fetchClientes();
   }, []);
-
-  // Controla animação de entrada/saída
-  useEffect(() => {
-    if (showModal) {
-      setShouldRenderModal(true);
-      setTimeout(() => setModalVisible(true), 10);
-    } else {
-      setModalVisible(false);
-    }
-  }, [showModal]);
-
-  // Remove o modal do DOM após a animação de saída
-  useEffect(() => {
-    if (!modalVisible && shouldRenderModal) {
-      const timeout = setTimeout(() => setShouldRenderModal(false), 300);
-      return () => clearTimeout(timeout);
-    }
-  }, [modalVisible, shouldRenderModal]);
 
   const now = new Date();
 
@@ -119,10 +98,6 @@ export default function DashboardClientes() {
   const aniversariantesMes = clientes.filter((c) => {
     const data = parseDataNascimento(c.dataNascimento as string);
     return data && data.getMonth() === now.getMonth();
-  });
-  const aniversariantesDia = aniversariantesMes.filter((c) => {
-    const data = parseDataNascimento(c.dataNascimento as string);
-    return data && data.getDate() === now.getDate();
   });
 
   return (
@@ -190,74 +165,53 @@ export default function DashboardClientes() {
 
           {/* Bloco Aniversariantes */}
           <section
-            className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => setShowModal(true)}
-            title="Clique para ver todos os aniversariantes do mês"
+            className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md"
+            title="Aniversariantes do mês"
           >
             <div className="flex items-center gap-3 mb-2">
               <FaBirthdayCake className="text-yellow-500 text-2xl" />
+              <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide">Aniversariantes do Mês</span>
+              <span className="ml-2 text-lg text-gray-500 font-bold">({aniversariantesMes.length})</span>
             </div>
-            <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide mb-2">Aniversariantes do Mês</span>
-            <div className="flex items-end gap-3">
-              <span className="text-4xl font-bold text-gray-900">{aniversariantesMes.length}</span>
-              <span className="text-sm text-gray-500 mb-1">Mês</span>
-            </div>
-            {aniversariantesDia.length > 0 && (
-              <div className="mt-2">
-                <span className="block text-xs text-gray-700 font-semibold mb-1">Hoje:</span>
-                <ul className="list-disc list-inside text-sm text-gray-800">
-                  {aniversariantesDia.map((c) => (
-                    <li key={c.id} className="font-medium">
-                      {typeof c.nomeCompleto === 'string' && c.nomeCompleto.trim() !== '' ? c.nomeCompleto : "(Sem nome)"}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
-
-          {/* Modal de aniversariantes do mês */}
-          {shouldRenderModal && (
-            <div
-              className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 transition-opacity duration-300 ${modalVisible ? 'opacity-100' : 'opacity-0'}`}
-              onClick={() => setShowModal(false)}
-            >
-              <div
-                className={`bg-white rounded-xl shadow-lg p-6 max-w-md w-full relative transform transition-all duration-300 ${modalVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
-                onClick={e => e.stopPropagation()}
-              >
-                <button
-                  className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-xl font-bold"
-                  onClick={() => setShowModal(false)}
-                  aria-label="Fechar"
-                >
-                  ×
-                </button>
-                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <FaBirthdayCake className="text-yellow-500" /> Aniversariantes do mês
-                </h2>
-                {aniversariantesMes.length === 0 ? (
-                  <div className="text-gray-500 text-center">Nenhum aniversariante neste mês.</div>
-                ) : (
-                  <ul className="list-disc list-inside space-y-1 max-h-64 overflow-y-auto">
-                    {aniversariantesMes.map((c) => (
-                      <li key={c.id} className="font-medium">
-                        {typeof c.nomeCompleto === 'string' && c.nomeCompleto.trim() !== '' ? c.nomeCompleto : "(Sem nome)"}
-                        {c.dataNascimento && (
-                          <span className="text-xs text-gray-500 ml-2">
-                            {(() => {
-                              const data = parseDataNascimento(c.dataNascimento as string);
-                              return data ? `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}` : "";
-                            })()}
-                          </span>
-                        )}
-                      </li>
-                    ))}
+            {/* Lista de aniversariantes do mês, ordenada por data do mês (menor para maior) */}
+            <div className="mt-2 max-h-40 overflow-y-auto pr-2">
+              {(() => {
+                // Ordenar aniversariantes por data do mês (menor para maior)
+                const hoje = new Date();
+                const ordenarPorData = (c: Pessoa) => {
+                  const data = parseDataNascimento(c.dataNascimento as string);
+                  if (!data) return 9999;
+                  return data.getDate();
+                };
+                const ordenados = [...aniversariantesMes].sort((a, b) => ordenarPorData(a) - ordenarPorData(b));
+                if (ordenados.length === 0) {
+                  return <div className="text-gray-500 text-sm">Nenhum aniversariante neste mês.</div>;
+                }
+                return (
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    {ordenados.slice(0, 5).map((c) => {
+                      const data = parseDataNascimento(c.dataNascimento as string);
+                      const isHoje = data && data.getDate() === hoje.getDate() && data.getMonth() === hoje.getMonth();
+                      return (
+                        <li
+                          key={c.id}
+                          className={`font-medium ${isHoje ? 'text-green-600 font-bold' : 'text-gray-800'}`}
+                        >
+                          {typeof c.nomeCompleto === 'string' && c.nomeCompleto.trim() !== '' ? c.nomeCompleto : "(Sem nome)"}
+                          {c.dataNascimento && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              {data ? `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}` : ""}
+                            </span>
+                          )}
+                          {isHoje && <span className="ml-2 bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">Hoje!</span>}
+                        </li>
+                      );
+                    })}
                   </ul>
-                )}
-              </div>
+                );
+              })()}
             </div>
-          )}
+          </section>
         </div>
       )}
       {/*

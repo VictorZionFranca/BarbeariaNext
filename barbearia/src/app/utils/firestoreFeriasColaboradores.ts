@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, setDoc, Timestamp, query, where, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, Timestamp, query, where } from "firebase/firestore";
 import { db } from "../../lib/firebaseConfig";
 import { listarColaboradoresInformacoes } from "./firestoreColaboradoresInformacoes";
 
