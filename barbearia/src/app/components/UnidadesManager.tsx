@@ -16,9 +16,60 @@ interface Unidade {
     telefone: string;
     cep?: string;
     ativo: boolean;
+    horariosFuncionamento?: {
+        domingo?: { aberto: boolean; abertura: string; fechamento: string };
+        segunda?: { aberto: boolean; abertura: string; fechamento: string };
+        terca?: { aberto: boolean; abertura: string; fechamento: string };
+        quarta?: { aberto: boolean; abertura: string; fechamento: string };
+        quinta?: { aberto: boolean; abertura: string; fechamento: string };
+        sexta?: { aberto: boolean; abertura: string; fechamento: string };
+        sabado?: { aberto: boolean; abertura: string; fechamento: string };
+    };
 }
 
-const camposIniciais = {
+const diasSemanaObj = {
+    domingo: "Domingo",
+    segunda: "Segunda",
+    terca: "Terça",
+    quarta: "Quarta",
+    quinta: "Quinta",
+    sexta: "Sexta",
+    sabado: "Sábado",
+} as const;
+
+const diasSemana = Object.entries(diasSemanaObj) as [keyof typeof diasSemanaObj, string][];
+
+interface HorarioDia {
+    aberto: boolean;
+    abertura: string;
+    fechamento: string;
+}
+
+interface FormUnidade {
+    nome: string;
+    rua: string;
+    numero: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    pais: string;
+    telefone: string;
+    cep: string;
+    ativo: boolean;
+    horariosFuncionamento: Record<keyof typeof diasSemanaObj, HorarioDia>;
+}
+
+const horariosPadrao: Record<keyof typeof diasSemanaObj, HorarioDia> = {
+    domingo: { aberto: false, abertura: "08:00", fechamento: "20:00" },
+    segunda: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+    terca: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+    quarta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+    quinta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+    sexta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+    sabado: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+};
+
+const camposIniciais: FormUnidade = {
     nome: "",
     rua: "",
     numero: "",
@@ -29,6 +80,7 @@ const camposIniciais = {
     telefone: "",
     cep: "",
     ativo: true,
+    horariosFuncionamento: { ...horariosPadrao },
 };
 
 export default function UnidadesManager() {
@@ -53,10 +105,24 @@ export default function UnidadesManager() {
 
     function handleChange(e: ChangeEvent<HTMLInputElement>) {
         const { name, value, type } = e.target;
-        setForm(prev => ({
-            ...prev,
-            [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
-        }));
+        if (name.startsWith("horariosFuncionamento.")) {
+            const [, dia, campo] = name.split(".");
+            setForm(prev => ({
+                ...prev,
+                horariosFuncionamento: {
+                    ...prev.horariosFuncionamento,
+                    [dia as keyof typeof diasSemanaObj]: {
+                        ...prev.horariosFuncionamento[dia as keyof typeof diasSemanaObj],
+                        [campo]: campo === "aberto" ? (e.target as HTMLInputElement).checked : value,
+                    },
+                },
+            }));
+        } else {
+            setForm(prev => ({
+                ...prev,
+                [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+            }));
+        }
     }
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -98,6 +164,10 @@ export default function UnidadesManager() {
             telefone: unidade.telefone,
             cep: unidade.cep ?? "",
             ativo: unidade.ativo,
+            horariosFuncionamento: {
+                ...horariosPadrao,
+                ...unidade.horariosFuncionamento,
+            },
         });
         setEditId(unidade.id);
         setModalEditar(true);
@@ -654,6 +724,43 @@ export default function UnidadesManager() {
                                         <span className="ml-3 text-sm font-medium text-gray-900">Unidade Ativa</span>
                                     </label>
                                 </div>
+                                {/* Horários de Funcionamento */}
+                                <div className="border rounded-lg p-4 mb-2 bg-gray-50">
+                                    <span className="block font-semibold text-gray-700 mb-2">Horários de Funcionamento</span>
+                                    <div className="flex flex-col gap-2">
+                                        {diasSemana.map(([key, label]) => (
+                                            <div key={key} className="flex items-center gap-2 border-b pb-2 last:border-b-0">
+                                                <label className="flex items-center gap-2 min-w-[90px] font-semibold text-black">
+                                                    <input
+                                                        type="checkbox"
+                                                        name={`horariosFuncionamento.${key}.aberto`}
+                                                        checked={form.horariosFuncionamento[key].aberto}
+                                                        onChange={handleChange}
+                                                        className="accent-green-600"
+                                                    />
+                                                    <span>{label}</span>
+                                                </label>
+                                                <input
+                                                    type="time"
+                                                    name={`horariosFuncionamento.${key}.abertura`}
+                                                    value={form.horariosFuncionamento[key].abertura}
+                                                    onChange={handleChange}
+                                                    disabled={!form.horariosFuncionamento[key].aberto}
+                                                    className="border rounded p-1 text-black w-[90px]"
+                                                />
+                                                <span className="text-black">às</span>
+                                                <input
+                                                    type="time"
+                                                    name={`horariosFuncionamento.${key}.fechamento`}
+                                                    value={form.horariosFuncionamento[key].fechamento}
+                                                    onChange={handleChange}
+                                                    disabled={!form.horariosFuncionamento[key].aberto}
+                                                    className="border rounded p-1 text-black w-[90px]"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                                 {erro && (
                                     <span className="text-red-500 text-center">{erro}</span>
                                 )}
@@ -896,6 +1003,43 @@ export default function UnidadesManager() {
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                                         <span className="ml-3 text-sm font-medium text-gray-900">Unidade Ativa</span>
                                     </label>
+                                </div>
+                                {/* Horários de Funcionamento */}
+                                <div className="border rounded-lg p-4 mb-2 bg-gray-50">
+                                    <span className="block font-semibold text-gray-700 mb-2">Horários de Funcionamento</span>
+                                    <div className="flex flex-col gap-2">
+                                        {diasSemana.map(([key, label]) => (
+                                            <div key={key} className="flex items-center gap-2 border-b pb-2 last:border-b-0">
+                                                <label className="flex items-center gap-2 min-w-[90px] font-semibold text-black">
+                                                    <input
+                                                        type="checkbox"
+                                                        name={`horariosFuncionamento.${key}.aberto`}
+                                                        checked={form.horariosFuncionamento[key].aberto}
+                                                        onChange={handleChange}
+                                                        className="accent-green-600"
+                                                    />
+                                                    <span>{label}</span>
+                                                </label>
+                                                <input
+                                                    type="time"
+                                                    name={`horariosFuncionamento.${key}.abertura`}
+                                                    value={form.horariosFuncionamento[key].abertura}
+                                                    onChange={handleChange}
+                                                    disabled={!form.horariosFuncionamento[key].aberto}
+                                                    className="border rounded p-1 text-black w-[90px]"
+                                                />
+                                                <span className="text-black">às</span>
+                                                <input
+                                                    type="time"
+                                                    name={`horariosFuncionamento.${key}.fechamento`}
+                                                    value={form.horariosFuncionamento[key].fechamento}
+                                                    onChange={handleChange}
+                                                    disabled={!form.horariosFuncionamento[key].aberto}
+                                                    className="border rounded p-1 text-black w-[90px]"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                                 {erro && (
                                     <span className="text-red-500 text-center">{erro}</span>

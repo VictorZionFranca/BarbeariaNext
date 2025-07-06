@@ -15,6 +15,15 @@ export interface Unidade {
     ativo: boolean;
     dataCriacao: Timestamp | null;
     dataAtualizacao: Timestamp | null;
+    horariosFuncionamento?: HorariosFuncionamento;
+}
+
+export interface HorariosFuncionamento {
+    [dia: string]: {
+        aberto: boolean;
+        abertura: string; // formato 'HH:mm'
+        fechamento: string; // formato 'HH:mm'
+    };
 }
 
 export async function criarUnidade(unidade: Omit<Unidade, "id" | "dataCriacao" | "dataAtualizacao">) {
@@ -36,11 +45,23 @@ export async function criarUnidade(unidade: Omit<Unidade, "id" | "dataCriacao" |
         // Gera o novo ID
         const novoId = `filial${maiorNumero + 1}`;
 
+        // Horários padrão: fechado todos os dias
+        const horariosPadrao: HorariosFuncionamento = {
+            domingo: { aberto: false, abertura: "08:00", fechamento: "20:00" },
+            segunda: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+            terca: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+            quarta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+            quinta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+            sexta: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+            sabado: { aberto: true, abertura: "08:00", fechamento: "20:00" },
+        };
+
         const unidadeCompleta = {
             ...unidade,
             id: novoId,
             dataCriacao: Timestamp.now(),
             dataAtualizacao: Timestamp.now(),
+            horariosFuncionamento: unidade.horariosFuncionamento || horariosPadrao,
         };
 
         // Cria o documento com o ID sequencial
@@ -96,6 +117,7 @@ export async function atualizarUnidade(id: string, unidade: Partial<Unidade>) {
         await updateDoc(docRef, {
             ...unidade,
             dataAtualizacao: Timestamp.now(),
+            ...(unidade.horariosFuncionamento && { horariosFuncionamento: unidade.horariosFuncionamento }),
         });
     } catch (error) {
         console.error("Erro ao atualizar unidade:", error);
