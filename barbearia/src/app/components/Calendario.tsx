@@ -34,23 +34,75 @@ interface CalendarioProps {
 // Função utilitária para formatar data para YYYY-MM-DD
 function formatarDataInput(data: string | undefined): string {
   if (!data) return "";
+  
+  // Se já está no formato correto, retorna como está
   if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return data;
-  // Tenta converter de outros formatos
-  const d = new Date(data);
-  if (!isNaN(d.getTime())) {
-    return d.toISOString().slice(0, 10);
+  
+  // Se está no formato DD/MM/YYYY, converter
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+    const [dia, mes, ano] = data.split('/');
+    return `${ano}-${mes}-${dia}`;
   }
+  
+  // Se está no formato DD-MM-YYYY, converter
+  if (/^\d{2}-\d{2}-\d{4}$/.test(data)) {
+    const [dia, mes, ano] = data.split('-');
+    return `${ano}-${mes}-${dia}`;
+  }
+  
+  // Tenta converter de outros formatos usando Date
+  try {
+    const d = new Date(data);
+    if (!isNaN(d.getTime())) {
+      const ano = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, '0');
+      const dia = String(d.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
+    }
+  } catch (error) {
+    console.warn("Erro ao converter data:", data, error);
+  }
+  
   return "";
 }
-
-
 
 // Função utilitária para garantir formato YYYY-MM-DD local
 function getHojeISO() {
   const hoje = new Date();
-  hoje.setHours(0,0,0,0);
-  const tzOffset = hoje.getTimezoneOffset() * 60000;
-  return new Date(hoje.getTime() - tzOffset).toISOString().slice(0, 10);
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoje.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+// Função para formatar data para exibição (DD/MM/YYYY)
+function formatarDataExibicao(data: string | undefined): string {
+  if (!data) return "Data não definida";
+  
+  // Extrair apenas a data (YYYY-MM-DD) se estiver no formato com timezone
+  let dataLimpa = data;
+  if (data.includes('T')) {
+    dataLimpa = data.split('T')[0];
+  }
+  
+  // Se já está no formato YYYY-MM-DD, converter para DD/MM/YYYY
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataLimpa)) {
+    const [ano, mes, dia] = dataLimpa.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  
+  // Se está no formato DD/MM/YYYY, retornar como está
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dataLimpa)) {
+    return dataLimpa;
+  }
+  
+  // Se está no formato DD-MM-YYYY, converter para DD/MM/YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dataLimpa)) {
+    const [dia, mes, ano] = dataLimpa.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+  
+  return "Data inválida";
 }
 
 // Função para obter o nome do dia da semana no padrão dos horários da unidade
@@ -83,6 +135,9 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
   const [loadingUnidades, setLoadingUnidades] = useState(true);
   const [modalFechado, setModalFechado] = useState<{ aberto: boolean; dia: string }>({ aberto: false, dia: "" });
   const [colaboradoresInfo, setColaboradoresInfo] = useState<ColaboradorInformacoes[]>([]);
+  // Adicionar estados de animação
+  const [animandoNovo, setAnimandoNovo] = useState(false);
+  const [animandoEditar, setAnimandoEditar] = useState(false);
 
   // Se receber controle externo, usa ele; senão, usa estado interno
   const modalNovoOpen = typeof modalNovoAberto === 'boolean' ? modalNovoAberto : modalAberto;
@@ -111,10 +166,23 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
         if (ag.data.includes('T')) {
           dataFormatada = ag.data.split('T')[0];
         }
-        
+        // Calcular horário de término
+        let horaFim = "";
+        if (ag.hora && ag.servicoId) {
+          const servico = servicos.find(s => s.id === ag.servicoId);
+          if (servico) {
+            const [h, m] = ag.hora.split(":").map(Number);
+            if (!isNaN(h) && !isNaN(m)) {
+              const totalMin = h * 60 + m + (servico.duracaoEmMinutos || 0);
+              const hFim = Math.floor(totalMin / 60);
+              const mFim = totalMin % 60;
+              horaFim = `${hFim.toString().padStart(2, "0")}:${mFim.toString().padStart(2, "0")}`;
+            }
+          }
+        }
         return {
           id: ag.id,
-          title: `${ag.servicoNome} - ${ag.clienteNome}`,
+          title: `${ag.hora}${horaFim ? ` - ${horaFim}` : ''}<br>${ag.servicoNome} - ${ag.clienteNome}`,
           start: `${dataFormatada}T${ag.hora}`,
           extendedProps: ag,
           backgroundColor: ag.status === 'cancelado' ? '#ef4444' : 
@@ -124,7 +192,7 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
         };
       })
     );
-  }, []);
+  }, [servicos]);
 
   useEffect(() => {
     buscarAgendamentos();
@@ -151,8 +219,10 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
   // Função para gerar horários disponíveis (considerando agenda do barbeiro e horários da unidade)
   const gerarHorariosDisponiveis = useCallback((agendamentoId?: string) => {
     if (!form.data || !form.colaboradorId || !unidadeSelecionada) return [];
+    
     const unidade = unidades.find(u => u.id === unidadeSelecionada);
     if (!unidade) return [];
+    
     const diaSemana = getDiaSemanaFirestore(form.data);
     const horariosFuncionamento = unidade.horariosFuncionamento?.[diaSemana];
     if (!horariosFuncionamento || !horariosFuncionamento.aberto) return [];
@@ -161,18 +231,39 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
     const [hIni, mIni] = horariosFuncionamento.abertura.split(":").map(Number);
     const [hFim, mFim] = horariosFuncionamento.fechamento.split(":").map(Number);
     
+    // Validar horários de funcionamento
+    if (isNaN(hIni) || isNaN(mIni) || isNaN(hFim) || isNaN(mFim)) {
+      console.error("Horários de funcionamento inválidos:", horariosFuncionamento);
+      return [];
+    }
+    
     // Intervalo de almoço (se configurado)
     const intervaloInicio = horariosFuncionamento.intervaloInicio ? 
       horariosFuncionamento.intervaloInicio.split(":").map(Number) : null;
     const intervaloFim = horariosFuncionamento.intervaloFim ? 
       horariosFuncionamento.intervaloFim.split(":").map(Number) : null;
     
+    // Validar intervalo de almoço
+    if (intervaloInicio && (isNaN(intervaloInicio[0]) || isNaN(intervaloInicio[1]))) {
+      console.warn("Intervalo de almoço início inválido:", horariosFuncionamento.intervaloInicio);
+    }
+    if (intervaloFim && (isNaN(intervaloFim[0]) || isNaN(intervaloFim[1]))) {
+      console.warn("Intervalo de almoço fim inválido:", horariosFuncionamento.intervaloFim);
+    }
+    
+    // Obter data de hoje para comparação
+    const hojeISO = getHojeISO();
+    const dataSelecionada = formatarDataInput(form.data);
+    const agora = new Date();
+    const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+    
+    // Gerar todos os horários possíveis
     for (let h = hIni; h < hFim || (h === hFim && mIni < mFim); h++) {
       for (let m = (h === hIni ? mIni : 0); m < 60; m += 30) {
         if (h > hFim || (h === hFim && m >= mFim)) break;
         
         // Verificar se está dentro do intervalo de almoço
-        if (intervaloInicio && intervaloFim) {
+        if (intervaloInicio && intervaloFim && !isNaN(intervaloInicio[0]) && !isNaN(intervaloFim[0])) {
           const minutosAtual = h * 60 + m;
           const minutosIntervaloInicio = intervaloInicio[0] * 60 + intervaloInicio[1];
           const minutosIntervaloFim = intervaloFim[0] * 60 + intervaloFim[1];
@@ -180,6 +271,12 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
           if (minutosAtual >= minutosIntervaloInicio && minutosAtual < minutosIntervaloFim) {
             continue; // Pular horários dentro do intervalo
           }
+        }
+        
+        // Só mostrar horários futuros no dia de hoje
+        if (dataSelecionada === hojeISO) {
+          const minutosHorario = h * 60 + m;
+          if (minutosHorario <= minutosAgora) continue;
         }
         
         const hora = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
@@ -211,27 +308,59 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
     
     // Filtrar horários que conflitam com agendamentos existentes
     return horarios.filter(horario => {
-      if (!horario || typeof horario !== "string" || !horario.includes(":")) return false;
+      if (!horario || typeof horario !== "string" || !horario.match(/^\d{2}:\d{2}$/)) {
+        console.warn("Horário inválido:", horario);
+        return false;
+      }
+      
       const [h, m] = horario.split(":").map(Number);
+      if (isNaN(h) || isNaN(m)) {
+        console.warn("Valores de hora/minuto inválidos:", { h, m });
+        return false;
+      }
+      
       const inicioHorario = h * 60 + m;
       
       // Se temos um serviço selecionado, verificar se cabe no horário
       if (form.servicoId) {
         const servico = servicos.find(s => s.id === form.servicoId);
-        if (!servico) return false;
-        const fimHorario = inicioHorario + servico.duracaoEmMinutos;
+        if (!servico) {
+          console.warn("Serviço não encontrado:", form.servicoId);
+          return false;
+        }
+        
+        const duracaoServico = servico.duracaoEmMinutos;
+        if (!duracaoServico || duracaoServico <= 0) {
+          console.warn("Duração do serviço inválida:", duracaoServico);
+          return false;
+        }
+        
+        const fimHorario = inicioHorario + duracaoServico;
         
         // Verificar se o serviço termina antes do fechamento da unidade
         const minutosFechamento = hFim * 60 + mFim;
-        if (fimHorario > minutosFechamento) return false;
+        if (fimHorario > minutosFechamento) {
+          return false; // Serviço não cabe no horário de funcionamento
+        }
       }
       
       // Verificar conflitos com agendamentos existentes
       for (const ag of agsDia) {
         // Pular o próprio agendamento se estiver editando
         if (agendamentoId && ag.id === agendamentoId) continue;
-        if (!ag.hora || typeof ag.hora !== "string" || !ag.hora.includes(":")) continue;
+        
+        // Validar hora do agendamento existente
+        if (!ag.hora || !ag.hora.match(/^\d{2}:\d{2}$/)) {
+          console.warn("Hora inválida no agendamento existente:", ag.hora, "ID:", ag.id);
+          continue;
+        }
+        
         const [hAg, mAg] = ag.hora.split(":").map(Number);
+        if (isNaN(hAg) || isNaN(mAg)) {
+          console.warn("Valores de hora/minuto inválidos no agendamento existente:", { hAg, mAg }, "ID:", ag.id);
+          continue;
+        }
+        
         const inicioAg = hAg * 60 + mAg;
         
         // Encontrar duração do serviço do agendamento
@@ -243,7 +372,11 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
         if (form.servicoId) {
           const servico = servicos.find(s => s.id === form.servicoId);
           if (!servico) return false;
-          const fimHorario = inicioHorario + servico.duracaoEmMinutos;
+          
+          const duracaoServico = servico.duracaoEmMinutos;
+          if (!duracaoServico || duracaoServico <= 0) return false;
+          
+          const fimHorario = inicioHorario + duracaoServico;
           
           // Verificar se há sobreposição
           if (inicioHorario < fimAg && fimHorario > inicioAg) {
@@ -260,6 +393,22 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
       return true; // Horário disponível
     });
   }, [form.data, form.colaboradorId, form.servicoId, unidadeSelecionada, unidades, eventos, servicos]);
+
+  // Validação extra no submit para impedir agendamento em horários passados
+  function horarioEhFuturo(data: string, hora: string) {
+    if (!data || !hora) return false;
+    const hojeISO = getHojeISO();
+    const dataSelecionada = formatarDataInput(data);
+    if (dataSelecionada > hojeISO) return true; // Data futura
+    if (dataSelecionada < hojeISO) return false; // Data passada
+    // Se for hoje, comparar hora
+    const agora = new Date();
+    const [h, m] = hora.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return false;
+    const minutosHorario = h * 60 + m;
+    const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+    return minutosHorario > minutosAgora;
+  }
 
   // Função para saber se a unidade está aberta no dia selecionado
   function unidadeAbertaNoDia(unidadeId: string, data: string) {
@@ -290,17 +439,30 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
 
   // Função para limpar formulário
   const limparFormulario = useCallback(() => {
-    setForm({});
+    setForm({ clienteId: "" });
+    setUnidadeSelecionada("");
     setErro("");
     setSucesso("");
   }, []);
 
   // Handler para clique em dia/slot
   const aoClicarNoDia = (info: DateClickInfo) => {
-    const data = info.dateStr;
-    // Limpar formulário e definir apenas a data
+    // Detecta se veio com hora (ex: 2024-06-10T09:00:00)
+    const temHora = info.dateStr.includes('T') && info.dateStr.split('T')[1]?.length >= 5;
+    const data = info.dateStr.split('T')[0];
+    const hora = temHora ? info.dateStr.split('T')[1].slice(0,5) : undefined;
     limparFormulario();
-    setForm({ data });
+    setForm(hora ? { data, hora } : { data });
+    setModalNovoOpen(true);
+  };
+
+  // Novo handler para clique em slot de horário
+  const aoClicarNoSlot = (info: { start: Date; startStr: string }) => {
+    // Sempre vem com hora
+    const data = info.startStr.split('T')[0];
+    const hora = info.startStr.split('T')[1]?.slice(0,5);
+    limparFormulario();
+    setForm({ data, hora });
     setModalNovoOpen(true);
   };
 
@@ -367,26 +529,22 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
       return;
     }
     
-    if (!unidadeSelecionada) {
-      setErro("Por favor, selecione uma unidade!");
-      return;
-    }
-    
     // Verificar se a unidade está aberta no dia selecionado
-    if (!unidadeAbertaNoDia(unidadeSelecionada, form.data)) {
+    const dataFormatada = formatarDataInput(form.data);
+    if (!unidadeAbertaNoDia(unidadeSelecionada, dataFormatada)) {
       setErro("A unidade está fechada neste dia!");
       return;
     }
     
     // Verificar se o horário está dentro do funcionamento da unidade
-    if (!horarioDentroFuncionamento(unidadeSelecionada, form.data, form.hora)) {
+    if (!horarioDentroFuncionamento(unidadeSelecionada, dataFormatada, form.hora)) {
       setErro("O horário selecionado está fora do horário de funcionamento da unidade!");
       return;
     }
     
     // Verifica conflito de horário
     if (await existeConflitoHorario({
-      data: form.data!,
+      data: dataFormatada,
       hora: form.hora!,
       colaboradorId: form.colaboradorId!,
       servicoId: form.servicoId!
@@ -395,12 +553,19 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
       return;
     }
     
+    if (!horarioEhFuturo(form.data, form.hora)) {
+      setErro("Não é possível agendar para horários passados!");
+      return;
+    }
+    
     try {
       const cliente = clientes.find((c) => c.id === form.clienteId);
       const colaborador = colaboradores.find((c) => c.id === form.colaboradorId);
       const servico = servicos.find((s) => s.id === form.servicoId);
+      
       await criarAgendamento({
         ...form,
+        data: dataFormatada, // Usar a data formatada
         clienteNome: cliente?.nomeCompleto || "",
         colaboradorNome: colaborador?.nomeCompleto || "",
         servicoNome: servico?.nomeDoServico || "",
@@ -465,20 +630,21 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
     }
     
     // Verificar se a unidade está aberta no dia selecionado
-    if (!unidadeAbertaNoDia(unidadeSelecionada, form.data)) {
+    const dataFormatada = formatarDataInput(form.data);
+    if (!unidadeAbertaNoDia(unidadeSelecionada, dataFormatada)) {
       setErro("A unidade está fechada neste dia!");
       return;
     }
     
     // Verificar se o horário está dentro do funcionamento da unidade
-    if (!horarioDentroFuncionamento(unidadeSelecionada, form.data, form.hora)) {
+    if (!horarioDentroFuncionamento(unidadeSelecionada, dataFormatada, form.hora)) {
       setErro("O horário selecionado está fora do horário de funcionamento da unidade!");
       return;
     }
     
     // Verifica conflito de horário
     if (await existeConflitoHorario({
-      data: form.data!,
+      data: dataFormatada,
       hora: form.hora!,
       colaboradorId: form.colaboradorId!,
       servicoId: form.servicoId!,
@@ -488,12 +654,25 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
       return;
     }
     
+    if (!horarioEhFuturo(form.data, form.hora)) {
+      setErro("Não é possível agendar para horários passados!");
+      return;
+    }
+    
     try {
       const cliente = clientes.find((c) => c.id === form.clienteId);
       const colaborador = colaboradores.find((c) => c.id === form.colaboradorId);
       const servico = servicos.find((s) => s.id === form.servicoId);
+      
+      // Extrair apenas a data (YYYY-MM-DD) se estiver no formato com timezone
+      let dataFormatada = form.data;
+      if (form.data && form.data.includes('T')) {
+        dataFormatada = form.data.split('T')[0];
+      }
+      
       await atualizarAgendamento(form.id!, {
         ...form,
+        data: dataFormatada, // Usar a data formatada
         clienteNome: cliente?.nomeCompleto || "",
         colaboradorNome: colaborador?.nomeCompleto || "",
         servicoNome: servico?.nomeDoServico || "",
@@ -537,49 +716,95 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
     }
   };
 
-
-
   // Função para verificar conflito de horário
-  async function existeConflitoHorario({ data, hora, colaboradorId, servicoId, agendamentoId }: { data: string, hora: string, colaboradorId: string, servicoId: string, agendamentoId?: string }) {
-    if (!data || !hora || !colaboradorId || !servicoId) return false;
+  const existeConflitoHorario = useCallback(async ({ data, hora, colaboradorId, servicoId, agendamentoId }: { data: string, hora: string, colaboradorId: string, servicoId: string, agendamentoId?: string }) => {
+    if (!data || !hora || !colaboradorId || !servicoId) {
+      console.warn("Dados incompletos para verificação de conflito:", { data, hora, colaboradorId, servicoId });
+      return false;
+    }
+    
+    // Extrair apenas a data (YYYY-MM-DD) se estiver no formato com timezone
+    let dataFormatada = data;
+    if (data.includes('T')) {
+      dataFormatada = data.split('T')[0];
+    }
+    
+    // Validar formato da hora
+    if (!hora.match(/^\d{2}:\d{2}$/)) {
+      console.error("Formato de hora inválido:", hora);
+      return false;
+    }
     
     const servico = servicos.find((s: Servico & { id: string }) => s.id === servicoId);
-    if (!servico) return false;
-    
-    const dur = servico.duracaoEmMinutos;
-    
-    // Proteção contra valores undefined
-    if (!hora || typeof hora !== "string" || !hora.includes(":")) return false;
-    const [horaPart, minPart] = hora.split(":");
-    if (!horaPart || !minPart) return false;
-    
-    const inicioNovo = parseInt(horaPart) * 60 + parseInt(minPart);
-    const fimNovo = inicioNovo + dur;
-    
-    // Buscar todos os agendamentos ativos do colaborador na data
-    const ags = await listarAgendamentos({ data, colaboradorId, status: "ativo" });
-    
-    for (const ag of ags) {
-      // Pular o próprio agendamento se estiver editando
-      if (agendamentoId && ag.id === agendamentoId) continue;
-      
-      // Proteção contra valores undefined
-      if (!ag.hora || typeof ag.hora !== "string" || !ag.hora.includes(":")) continue;
-      const [horaAg, minAg] = ag.hora.split(":");
-      if (!horaAg || !minAg) continue;
-      
-      const inicioExist = parseInt(horaAg) * 60 + parseInt(minAg);
-      const servExist = servicos.find((s: Servico & { id: string }) => s.id === ag.servicoId);
-      const durExist = servExist ? servExist.duracaoEmMinutos : 30;
-      const fimExist = inicioExist + durExist;
-      
-      // Verificar sobreposição: se há conflito entre os horários
-      if (inicioNovo < fimExist && fimNovo > inicioExist) {
-        return true;
-      }
+    if (!servico) {
+      console.error("Serviço não encontrado:", servicoId);
+      return false;
     }
-    return false;
-  }
+    
+    const duracaoNovo = servico.duracaoEmMinutos;
+    if (!duracaoNovo || duracaoNovo <= 0) {
+      console.error("Duração do serviço inválida:", duracaoNovo);
+      return false;
+    }
+    
+    // Calcular horários do novo agendamento
+    const [horaNovo, minNovo] = hora.split(":").map(Number);
+    if (isNaN(horaNovo) || isNaN(minNovo) || horaNovo < 0 || horaNovo > 23 || minNovo < 0 || minNovo > 59) {
+      console.error("Valores de hora/minuto inválidos:", { horaNovo, minNovo });
+      return false;
+    }
+    
+    const inicioNovo = horaNovo * 60 + minNovo;
+    const fimNovo = inicioNovo + duracaoNovo;
+    
+    try {
+      // Buscar todos os agendamentos ativos do colaborador na data
+      const ags = await listarAgendamentos({ data: dataFormatada, colaboradorId, status: "ativo" });
+      
+      for (const ag of ags) {
+        // Pular o próprio agendamento se estiver editando
+        if (agendamentoId && ag.id === agendamentoId) continue;
+        
+        // Validar formato da hora do agendamento existente
+        if (!ag.hora || !ag.hora.match(/^\d{2}:\d{2}$/)) {
+          console.warn("Formato de hora inválido no agendamento existente:", ag.hora, "ID:", ag.id);
+          continue;
+        }
+        
+        const [horaExist, minExist] = ag.hora.split(":").map(Number);
+        if (isNaN(horaExist) || isNaN(minExist)) {
+          console.warn("Valores de hora/minuto inválidos no agendamento existente:", { horaExist, minExist }, "ID:", ag.id);
+          continue;
+        }
+        
+        const inicioExist = horaExist * 60 + minExist;
+        
+        // Buscar duração do serviço do agendamento existente
+        const servicoExist = servicos.find((s: Servico & { id: string }) => s.id === ag.servicoId);
+        const duracaoExist = servicoExist ? servicoExist.duracaoEmMinutos : 30; // Fallback para 30 min
+        const fimExist = inicioExist + duracaoExist;
+        
+        // Verificar sobreposição: se há conflito entre os horários
+        // Conflito ocorre quando:
+        // - O início do novo agendamento está dentro do agendamento existente, OU
+        // - O fim do novo agendamento está dentro do agendamento existente, OU
+        // - O novo agendamento engloba completamente o agendamento existente
+        if (inicioNovo < fimExist && fimNovo > inicioExist) {
+          console.log("Conflito detectado:", {
+            novo: { inicio: inicioNovo, fim: fimNovo, hora: hora },
+            existente: { inicio: inicioExist, fim: fimExist, hora: ag.hora, servico: ag.servicoNome }
+          });
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Erro ao verificar conflito de horário:", error);
+      // Em caso de erro, retornar true (conflito) para evitar agendamentos duplicados
+      return true;
+    }
+  }, [servicos]);
 
   // Função para verificar se um colaborador está de férias
   function colaboradorEstaDeFerias(colaboradorId: string): boolean {
@@ -673,21 +898,124 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
     return dataVerificar >= inicio && dataVerificar <= fim;
   }, [colaboradoresInfo]);
 
-  // Modal de Novo Agendamento
+  // Função utilitária para validar conflito de horário de forma mais eficiente
+  const validarConflitoHorario = useCallback(async (hora: string, data: string, colaboradorId: string, servicoId: string, agendamentoId?: string) => {
+    if (!hora || !data || !colaboradorId || !servicoId) return null;
+    
+    try {
+      const temConflito = await existeConflitoHorario({
+        data,
+        hora,
+        colaboradorId,
+        servicoId,
+        agendamentoId
+      });
+      
+      if (temConflito) {
+        // Buscar detalhes do conflito para mostrar ao usuário
+        const ags = await listarAgendamentos({ data, colaboradorId, status: "ativo" });
+        const servico = servicos.find(s => s.id === servicoId);
+        const duracaoNovo = servico?.duracaoEmMinutos || 30;
+        const [horaNovo, minNovo] = hora.split(":").map(Number);
+        const inicioNovo = horaNovo * 60 + minNovo;
+        const fimNovo = inicioNovo + duracaoNovo;
+        
+        const conflitos = ags.filter(ag => {
+          if (agendamentoId && ag.id === agendamentoId) return false;
+          if (!ag.hora || !ag.hora.match(/^\d{2}:\d{2}$/)) return false;
+          
+          const [horaExist, minExist] = ag.hora.split(":").map(Number);
+          const inicioExist = horaExist * 60 + minExist;
+          const servicoExist = servicos.find(s => s.id === ag.servicoId);
+          const duracaoExist = servicoExist?.duracaoEmMinutos || 30;
+          const fimExist = inicioExist + duracaoExist;
+          
+          return inicioNovo < fimExist && fimNovo > inicioExist;
+        });
+        
+        if (conflitos.length > 0) {
+          const conflito = conflitos[0];
+          return {
+            temConflito: true,
+            detalhes: `Conflito com: ${conflito.servicoNome} (${conflito.hora}) - Cliente: ${conflito.clienteNome}`
+          };
+        }
+      }
+      
+      return { temConflito: false };
+    } catch (error) {
+      console.error("Erro ao validar conflito:", error);
+      return { temConflito: true, detalhes: "Erro ao verificar conflito" };
+    }
+  }, [servicos, existeConflitoHorario]);
+
+  // Verificar conflito de horário em tempo real quando selecionar horário
+  useEffect(() => {
+    const verificarConflitoTempoReal = async () => {
+      if (form.hora && form.data && form.colaboradorId && form.servicoId) {
+        const resultado = await validarConflitoHorario(
+          form.hora,
+          form.data,
+          form.colaboradorId,
+          form.servicoId,
+          form.id
+        );
+        
+        if (resultado?.temConflito) {
+          setErro(`⚠️ ATENÇÃO: ${resultado.detalhes}`);
+        } else {
+          // Limpar erro se não houver conflito
+          setErro("");
+        }
+      }
+    };
+
+    // Debounce para não fazer muitas verificações
+    const timeoutId = setTimeout(verificarConflitoTempoReal, 500);
+    return () => clearTimeout(timeoutId);
+  }, [form.hora, form.data, form.colaboradorId, form.servicoId, form.id, validarConflitoHorario]);
+
+  // Abrir modal: animação de entrada
+  useEffect(() => {
+    if (modalNovoOpen) {
+      setTimeout(() => setAnimandoNovo(true), 10);
+    } else {
+      setAnimandoNovo(false);
+    }
+  }, [modalNovoOpen]);
+  useEffect(() => {
+    if (modalEditar) {
+      setTimeout(() => setAnimandoEditar(true), 10);
+    } else {
+      setAnimandoEditar(false);
+    }
+  }, [modalEditar]);
+
+  // Função para fechar modal com animação
+  function fecharModalNovoAnimado() {
+    setAnimandoNovo(false);
+    setTimeout(() => setModalNovoOpen(false), 200);
+  }
+  function fecharModalEditarAnimado() {
+    setAnimandoEditar(false);
+    setTimeout(() => setModalEditar(false), 200);
+  }
+
+  // Modal Novo Agendamento
   const ModalNovoAgendamento = modalNovoOpen && typeof window !== "undefined" && document.body && createPortal(
     <div
       className={`fixed inset-0 flex items-center justify-center z-[99998] bg-black bg-opacity-80 transition-opacity duration-300 ${modalNovoOpen ? 'opacity-100' : 'opacity-0'}`}
-      onClick={e => { if (e.target === e.currentTarget) setModalNovoOpen(false); }}
+      onClick={e => { if (e.target === e.currentTarget) fecharModalNovoAnimado(); }}
     >
       <div
         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl border border-gray-200 relative
           transform transition-all duration-300
-          ${modalNovoOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-80 scale-95'}
+          ${animandoNovo ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-10'}
           overflow-y-auto max-h-[90vh]`}
       >
         <button
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-          onClick={() => setModalNovoOpen(false)}
+          onClick={fecharModalNovoAnimado}
           aria-label="Fechar"
           type="button"
         >
@@ -697,71 +1025,91 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
         <form onSubmit={handleSalvar} className="flex flex-col gap-4">
           {/* Unidade */}
           <div className="relative">
-            <select
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={unidadeSelecionada}
-              onChange={e => setUnidadeSelecionada(e.target.value)}
-              required
-              disabled={loadingUnidades}
-            >
-              <option value="">Selecione a unidade</option>
-              {unidades.map(u => (
-                <option key={u.id} value={u.id}>{u.nome}</option>
-              ))}
-            </select>
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {unidades.find(u => u.id === unidadeSelecionada)?.nome || "Unidade não definida"}
+              </div>
+            ) : (
+              <select
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={unidadeSelecionada}
+                onChange={e => setUnidadeSelecionada(e.target.value)}
+                required
+                disabled={loadingUnidades}
+              >
+                <option value="">Selecione a unidade</option>
+                {unidades.map(u => (
+                  <option key={u.id} value={u.id}>{u.nome}</option>
+                ))}
+              </select>
+            )}
             <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Unidade *</label>
           </div>
           {/* Serviço */}
           <div className="relative">
-            <select
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={form.servicoId || ""}
-              onChange={e => setForm(f => ({ ...f, servicoId: e.target.value }))}
-              required
-            >
-              <option value="">Selecione o serviço</option>
-              {servicosAtivos.map(s => (
-                <option key={s.id} value={s.id}>{s.nomeDoServico}</option>
-              ))}
-            </select>
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {servicos.find(s => s.id === form.servicoId)?.nomeDoServico || "Serviço não definido"}
+              </div>
+            ) : (
+              <select
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={form.servicoId || ""}
+                onChange={e => setForm(f => ({ ...f, servicoId: e.target.value }))}
+                required
+              >
+                <option value="">Selecione o serviço</option>
+                {servicosAtivos.map(s => (
+                  <option key={s.id} value={s.id}>{s.nomeDoServico}</option>
+                ))}
+              </select>
+            )}
             <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Serviço *</label>
           </div>
           {/* Profissional */}
           <div className="relative">
-            {unidadeSelecionada ? (
-              barbeirosUnidade.length > 0 ? (
-                <select
-                  className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-                  value={form.colaboradorId || ""}
-                  onChange={e => setForm(f => ({ ...f, colaboradorId: e.target.value, hora: "" }))}
-                  required
-                  disabled={loadingUnidades}
-                >
-                  <option value="">Selecione o profissional</option>
-                  {barbeirosUnidade.map(c => {
-                    const infoFerias = getInfoFeriasColaborador(c.id!);
-                    const estaDeFeriasNaData = form.data ? colaboradorEstaDeFeriasNaData(c.id!, form.data) : false;
-                    const textoFerias = estaDeFeriasNaData ? ` (DE FÉRIAS em ${form.data})` : infoFerias;
-                    return (
-                      <option 
-                        key={c.id} 
-                        value={c.id}
-                        disabled={estaDeFeriasNaData}
-                      >
-                        {c.nomeCompleto} {textoFerias}
-                      </option>
-                    );
-                  })}
-                </select>
-              ) : (
-                <div className="p-3 border border-orange-300 rounded-lg bg-orange-50 text-orange-600 select-none">
-                  Não há profissionais disponíveis nesta unidade (alguns podem estar de férias)
-                </div>
-              )
-            ) : (
-              <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">
-                Selecione uma unidade primeiro
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {colaboradores.find(c => c.id === form.colaboradorId)?.nomeCompleto || "Profissional não definido"}
               </div>
+            ) : (
+              <>
+                {unidadeSelecionada ? (
+                  barbeirosUnidade.length > 0 ? (
+                    <select
+                      className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                      value={form.colaboradorId || ""}
+                      onChange={e => setForm(f => ({ ...f, colaboradorId: e.target.value, hora: "" }))}
+                      required
+                      disabled={loadingUnidades}
+                    >
+                      <option value="">Selecione o profissional</option>
+                      {barbeirosUnidade.map(c => {
+                        const infoFerias = getInfoFeriasColaborador(c.id!);
+                        const estaDeFeriasNaData = form.data ? colaboradorEstaDeFeriasNaData(c.id!, form.data) : false;
+                        const textoFerias = estaDeFeriasNaData ? ` (DE FÉRIAS em ${form.data})` : infoFerias;
+                        return (
+                          <option 
+                            key={c.id} 
+                            value={c.id}
+                            disabled={estaDeFeriasNaData}
+                          >
+                            {c.nomeCompleto} {textoFerias}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <div className="p-3 border border-orange-300 rounded-lg bg-orange-50 text-orange-600 select-none">
+                      Não há profissionais disponíveis nesta unidade (alguns podem estar de férias)
+                    </div>
+                  )
+                ) : (
+                  <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">
+                    Selecione uma unidade primeiro
+                  </div>
+                )}
+              </>
             )}
             <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Profissional *</label>
           </div>
@@ -824,24 +1172,35 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
           {/* Cliente */}
           <div className="relative">
             <label className="block mb-1 text-xs text-black font-semibold">Cliente *</label>
-            <ClienteSearch
-              onClienteSelect={(cliente) => setForm(f => ({ ...f, clienteId: cliente.id }))}
-              selectedCliente={clientes.find(c => c.id === form.clienteId) || null}
-              placeholder="Buscar cliente pelo nome..."
-              className="w-full"
-            />
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {clientes.find(c => c.id === form.clienteId)?.nomeCompleto || "Cliente não definido"}
+              </div>
+            ) : (
+              <ClienteSearch
+                onClienteSelect={(cliente) => setForm(f => ({ ...f, clienteId: cliente.id }))}
+                selectedCliente={clientes.find(c => c.id === form.clienteId) || null}
+                placeholder="Buscar cliente pelo nome..."
+                className="w-full"
+              />
+            )}
           </div>
           {/* Observações */}
           <div className="relative">
             <label className="block mb-1 text-xs text-black font-semibold">Observações</label>
-            <input
-              type="text"
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={form.observacoes ?? ""}
-              onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
-              placeholder="Digite observações (opcional)"
-              autoComplete="off"
-            />
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {form.observacoes || "Nenhuma observação"}
+              </div>
+            ) : (
+              <input
+                type="text"
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={form.observacoes || ""}
+                onChange={e => setForm((f: typeof form) => ({ ...f, observacoes: e.target.value }))}
+                placeholder="Digite observações (opcional)"
+              />
+            )}
           </div>
           {erro && <span className="text-red-500 text-center">{erro}</span>}
           {sucesso && <span className="text-green-600 text-center">{sucesso}</span>}
@@ -867,21 +1226,21 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
     document.body
   );
 
-  // Modal de Edição de Agendamento
+  // Modal Editar Agendamento
   const ModalEditarAgendamento = modalEditar && typeof window !== "undefined" && document.body && createPortal(
     <div
       className={`fixed inset-0 flex items-center justify-center z-[99998] bg-black bg-opacity-80 transition-opacity duration-300 ${modalEditar ? 'opacity-100' : 'opacity-0'}`}
-      onClick={e => { if (e.target === e.currentTarget) setModalEditar(false); }}
+      onClick={e => { if (e.target === e.currentTarget) fecharModalEditarAnimado(); }}
     >
       <div
         className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl border border-gray-200 relative
           transform transition-all duration-300
-          ${modalEditar ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-80 scale-95'}
+          ${animandoEditar ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-10'}
           overflow-y-auto max-h-[90vh]`}
       >
         <button
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-          onClick={() => setModalEditar(false)}
+          onClick={fecharModalEditarAnimado}
           aria-label="Fechar"
           type="button"
         >
@@ -897,172 +1256,219 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
           }`}>
             <strong>Status:</strong> {form.status === 'finalizado' ? 'Finalizado' : 
                                     form.status === 'cancelado' ? 'Cancelado' : 'Ativo'}
+            {(form.status === 'finalizado' || form.status === 'cancelado') && (
+              <div className="text-sm mt-1">
+                Este agendamento não pode ser modificado.
+              </div>
+            )}
           </div>
         )}
         <form onSubmit={handleEditar} className="flex flex-col gap-4">
           {/* Unidade */}
           <div className="relative">
-            <select
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={unidadeSelecionada}
-              onChange={e => setUnidadeSelecionada(e.target.value)}
-              required
-              disabled={loadingUnidades || form.status === 'finalizado' || form.status === 'cancelado'}
-            >
-              <option value="">Selecione a unidade</option>
-              {unidades.map(u => (
-                <option key={u.id} value={u.id}>{u.nome}</option>
-              ))}
-            </select>
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {unidades.find(u => u.id === unidadeSelecionada)?.nome || "Unidade não definida"}
+              </div>
+            ) : (
+              <select
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={unidadeSelecionada}
+                onChange={e => setUnidadeSelecionada(e.target.value)}
+                required
+                disabled={loadingUnidades}
+              >
+                <option value="">Selecione a unidade</option>
+                {unidades.map(u => (
+                  <option key={u.id} value={u.id}>{u.nome}</option>
+                ))}
+              </select>
+            )}
             <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Unidade *</label>
           </div>
           {/* Serviço */}
           <div className="relative">
-            <select
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-              value={form.servicoId || ""}
-              onChange={e => setForm(f => ({ ...f, servicoId: e.target.value }))}
-              required
-              disabled={form.status === 'finalizado' || form.status === 'cancelado'}
-            >
-              <option value="">Selecione o serviço</option>
-              {servicosAtivos.map(s => (
-                <option key={s.id} value={s.id}>{s.nomeDoServico}</option>
-              ))}
-            </select>
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {servicos.find(s => s.id === form.servicoId)?.nomeDoServico || "Serviço não definido"}
+              </div>
+            ) : (
+              <select
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={form.servicoId || ""}
+                onChange={e => setForm(f => ({ ...f, servicoId: e.target.value }))}
+                required
+              >
+                <option value="">Selecione o serviço</option>
+                {servicosAtivos.map(s => (
+                  <option key={s.id} value={s.id}>{s.nomeDoServico}</option>
+                ))}
+              </select>
+            )}
             <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Serviço *</label>
           </div>
           {/* Profissional */}
           <div className="relative">
-            {unidadeSelecionada ? (
-              barbeirosUnidade.length > 0 ? (
-                <select
-                  className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-                  value={form.colaboradorId || ""}
-                  onChange={e => setForm(f => ({ ...f, colaboradorId: e.target.value, hora: "" }))}
-                  required
-                  disabled={loadingUnidades}
-                >
-                  <option value="">Selecione o profissional</option>
-                  {barbeirosUnidade.map(c => {
-                    const infoFerias = getInfoFeriasColaborador(c.id!);
-                    const estaDeFeriasNaData = form.data ? colaboradorEstaDeFeriasNaData(c.id!, form.data) : false;
-                    const textoFerias = estaDeFeriasNaData ? ` (DE FÉRIAS em ${form.data})` : infoFerias;
-                    return (
-                      <option 
-                        key={c.id} 
-                        value={c.id}
-                        disabled={estaDeFeriasNaData}
-                      >
-                        {c.nomeCompleto} {textoFerias}
-                      </option>
-                    );
-                  })}
-                </select>
-              ) : (
-                <div className="p-3 border border-orange-300 rounded-lg bg-orange-50 text-orange-600 select-none">
-                  Não há profissionais disponíveis nesta unidade (alguns podem estar de férias)
-                </div>
-              )
-            ) : (
-              <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">
-                Selecione uma unidade primeiro
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {colaboradores.find(c => c.id === form.colaboradorId)?.nomeCompleto || "Profissional não definido"}
               </div>
-            )}
-            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Profissional *</label>
-          </div>
-          {/* Data */}
-          <div className="relative">
-            <input
-              type="date"
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-              value={formatarDataInput(form.data)}
-              onChange={e => setForm((f: typeof form) => ({ ...f, data: e.target.value, hora: "" }))}
-              required
-              placeholder=" "
-              disabled={form.status === 'finalizado' || form.status === 'cancelado'}
-            />
-            <label
-              className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
-                peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
-                peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
-                peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
-            >
-              Data
-            </label>
-          </div>
-          {/* Horário */}
-          <div className="relative">
-            <label className="block mb-1 text-xs text-black font-semibold">Horário *</label>
-            {unidadeSelecionada && form.data && unidadeAbertaNoDia(unidadeSelecionada, form.data) ? (
+            ) : (
               <>
-                {form.colaboradorId && form.servicoId ? (
-                  gerarHorariosDisponiveis().length > 0 ? (
-                    <>
-                      <select
-                        className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
-                        value={form.hora || ""}
-                        onChange={e => setForm(f => ({ ...f, hora: e.target.value }))}
-                        required
-                        disabled={form.status === 'finalizado' || form.status === 'cancelado'}
-                      >
-                        <option value="">Selecione o horário</option>
-                        {gerarHorariosDisponiveis().map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {gerarHorariosDisponiveis().length} horário(s) disponível(is)
-                      </div>
-                    </>
+                {unidadeSelecionada ? (
+                  barbeirosUnidade.length > 0 ? (
+                    <select
+                      className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                      value={form.colaboradorId || ""}
+                      onChange={e => setForm(f => ({ ...f, colaboradorId: e.target.value, hora: "" }))}
+                      required
+                      disabled={loadingUnidades}
+                    >
+                      <option value="">Selecione o profissional</option>
+                      {barbeirosUnidade.map(c => {
+                        const infoFerias = getInfoFeriasColaborador(c.id!);
+                        const estaDeFeriasNaData = form.data ? colaboradorEstaDeFeriasNaData(c.id!, form.data) : false;
+                        const textoFerias = estaDeFeriasNaData ? ` (DE FÉRIAS em ${form.data})` : infoFerias;
+                        return (
+                          <option 
+                            key={c.id} 
+                            value={c.id}
+                            disabled={estaDeFeriasNaData}
+                          >
+                            {c.nomeCompleto} {textoFerias}
+                          </option>
+                        );
+                      })}
+                    </select>
                   ) : (
-                    <div className="p-3 border border-red-300 rounded-lg bg-red-50 text-red-600 select-none">
-                      Não há horários disponíveis para este profissional nesta data
+                    <div className="p-3 border border-orange-300 rounded-lg bg-orange-50 text-orange-600 select-none">
+                      Não há profissionais disponíveis nesta unidade (alguns podem estar de férias)
                     </div>
                   )
                 ) : (
                   <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">
-                    Selecione um profissional e serviço primeiro
+                    Selecione uma unidade primeiro
                   </div>
                 )}
               </>
-            ) : unidadeSelecionada && form.data ? (
-              <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">Unidade fechada neste dia</div>
+            )}
+            <label className="absolute left-3 -top-3 text-xs text-black bg-white px-1">Profissional *</label>
+          </div>
+                      {/* Data */}
+          <div className="relative">
+            <label className="block mb-1 text-xs text-black font-semibold">Data *</label>
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {formatarDataExibicao(form.data)}
+              </div>
             ) : (
-              <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">
-                {!unidadeSelecionada ? "Selecione uma unidade primeiro" : "Selecione uma data primeiro"}
+              <input
+                type="date"
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={formatarDataInput(form.data)}
+                onChange={e => setForm((f: typeof form) => ({ ...f, data: e.target.value, hora: "" }))}
+                required
+              />
+            )}
+          </div>
+          {/* Horário */}
+          <div className="relative">
+            <label className="block mb-1 text-xs text-black font-semibold">Horário *</label>
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {form.hora || "Horário não definido"}
+              </div>
+            ) : (
+              <>
+                {unidadeSelecionada && form.data && unidadeAbertaNoDia(unidadeSelecionada, form.data) ? (
+                  <>
+                    {form.colaboradorId && form.servicoId ? (
+                      gerarHorariosDisponiveis().length > 0 ? (
+                        <>
+                          <select
+                            className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                            value={form.hora || ""}
+                            onChange={e => setForm(f => ({ ...f, hora: e.target.value }))}
+                            required
+                          >
+                            <option value="">Selecione o horário</option>
+                            {gerarHorariosDisponiveis().map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {gerarHorariosDisponiveis().length} horário(s) disponível(is)
+                          </div>
+                        </>
+                      ) : (
+                        <div className="p-3 border border-red-300 rounded-lg bg-red-50 text-red-600 select-none">
+                          Não há horários disponíveis para este profissional nesta data
+                        </div>
+                      )
+                    ) : (
+                      <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">
+                        Selecione um profissional e serviço primeiro
+                      </div>
+                    )}
+                  </>
+                ) : unidadeSelecionada && form.data ? (
+                  <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">Unidade fechada neste dia</div>
+                ) : (
+                  <div className="p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 select-none cursor-not-allowed">
+                    {!unidadeSelecionada ? "Selecione uma unidade primeiro" : "Selecione uma data primeiro"}
+                  </div>
+                )}
+              </>
+            )}
+            {/* Horário de término */}
+            {form.hora && form.servicoId && (
+              <div className="mt-2 text-sm text-black">
+                <span className="font-semibold">Término previsto: </span>
+                {(() => {
+                  const servico = servicos.find(s => s.id === form.servicoId);
+                  if (!servico) return "-";
+                  const [h, m] = form.hora.split(":").map(Number);
+                  if (isNaN(h) || isNaN(m)) return "-";
+                  const totalMin = h * 60 + m + (servico.duracaoEmMinutos || 0);
+                  const hFim = Math.floor(totalMin / 60);
+                  const mFim = totalMin % 60;
+                  return `${hFim.toString().padStart(2, "0")}:${mFim.toString().padStart(2, "0")}`;
+                })()}
               </div>
             )}
           </div>
           {/* Cliente */}
           <div className="relative">
             <label className="block mb-1 text-xs text-black font-semibold">Cliente *</label>
-            <ClienteSearch
-              onClienteSelect={(cliente) => setForm(f => ({ ...f, clienteId: cliente.id }))}
-              selectedCliente={clientes.find(c => c.id === form.clienteId) || null}
-              placeholder="Buscar cliente pelo nome..."
-              className="w-full"
-              disabled={form.status === 'finalizado' || form.status === 'cancelado'}
-            />
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {clientes.find(c => c.id === form.clienteId)?.nomeCompleto || "Cliente não definido"}
+              </div>
+            ) : (
+              <ClienteSearch
+                onClienteSelect={(cliente) => setForm(f => ({ ...f, clienteId: cliente.id }))}
+                selectedCliente={clientes.find(c => c.id === form.clienteId) || null}
+                placeholder="Buscar cliente pelo nome..."
+                className="w-full"
+              />
+            )}
           </div>
           {/* Observações */}
           <div className="relative">
-            <input
-              type="text"
-              className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
-              value={form.observacoes || ""}
-              onChange={e => setForm((f: typeof form) => ({ ...f, observacoes: e.target.value }))}
-              placeholder=" "
-              disabled={form.status === 'finalizado' || form.status === 'cancelado'}
-            />
-            <label
-              className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
-                peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
-                peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
-                peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
-            >
-              Observações
-            </label>
+            <label className="block mb-1 text-xs text-black font-semibold">Observações</label>
+            {(form.status === 'finalizado' || form.status === 'cancelado') ? (
+              <div className="border border-gray-300 p-3 rounded-lg bg-gray-100 text-black w-full">
+                {form.observacoes || "Nenhuma observação"}
+              </div>
+            ) : (
+              <input
+                type="text"
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
+                value={form.observacoes || ""}
+                onChange={e => setForm((f: typeof form) => ({ ...f, observacoes: e.target.value }))}
+                placeholder="Digite observações (opcional)"
+              />
+            )}
           </div>
           {erro && <span className="text-red-500 text-center">{erro}</span>}
           {sucesso && <span className="text-green-600 text-center">{sucesso}</span>}
@@ -1127,9 +1533,9 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
   // Limpar formulário quando modal for aberto
   useEffect(() => {
     if (modalNovoOpen && !form.data) {
-      limparFormulario();
+      setForm({ data: getHojeISO(), hora: "" });
     }
-  }, [modalNovoOpen, form.data, limparFormulario]);
+  }, [modalNovoOpen, form.data]);
 
   // Limpar erro ao trocar unidade, data ou profissional
   useEffect(() => {
@@ -1161,6 +1567,13 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
       setForm(prev => ({ ...prev, colaboradorId: "", hora: "" }));
     }
   }, [form.data, form.colaboradorId, colaboradorEstaDeFeriasNaData]);
+
+  // Sempre que abrir o modal de novo agendamento (por botão), limpar o formulário
+  useEffect(() => {
+    if (modalNovoOpen) {
+      limparFormulario();
+    }
+  }, [modalNovoOpen, limparFormulario]);
 
   return (
     <div className="p-4 bg-white rounded shadow">
@@ -1202,6 +1615,8 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
         events={eventos}
         dateClick={aoClicarNoDia}
         eventClick={aoClicarEvento}
+        selectable={true}
+        select={aoClicarNoSlot} // <-- Corrige para usar select
         navLinks={false}
         nowIndicator
         datesSet={buscarAgendamentos}
@@ -1227,6 +1642,45 @@ export default function Calendario({ modalNovoAberto, setModalNovoAberto }: Cale
           const hora = info.startStr.split("T")[1]?.slice(0,5);
           return unidadeAbertaNoDia(unidadeSelecionada, data) && horarioDentroFuncionamento(unidadeSelecionada, data, hora);
         }}
+        eventContent={(arg) => {
+          const ag = arg.event.extendedProps as Agendamento;
+          const servico = servicos.find(s => s.id === ag.servicoId);
+          let horaFim = "";
+          if (ag.hora && servico) {
+            const [h, m] = ag.hora.split(":").map(Number);
+            if (!isNaN(h) && !isNaN(m)) {
+              const totalMin = h * 60 + m + (servico.duracaoEmMinutos || 0);
+              const hFim = Math.floor(totalMin / 60);
+              const mFim = totalMin % 60;
+              horaFim = `${hFim.toString().padStart(2, "0")}:${mFim.toString().padStart(2, "0")}`;
+            }
+          }
+          // Pega as cores do evento
+          const bg = arg.event.backgroundColor || "#3b82f6";
+          const border = arg.event.borderColor || "#2563eb";
+          const color = "#fff";
+
+          return {
+            html: `
+              <div style="
+                background:${bg};
+                /* border:2px solid ${border}; */
+                border-radius:8px;
+                color:${color};
+                padding:2px 4px;
+                font-size:13px;
+                font-weight:bold;
+                text-align:left;
+                white-space:normal;
+              ">
+                ${ag.hora || ""}${horaFim ? ` - ${horaFim}` : ""}<br>
+                <span style="font-weight:normal;font-size:12px;">${ag.servicoNome || ""} - ${ag.clienteNome || ""}</span>
+              </div>
+            `
+          };
+        }}
+        dayMaxEventRows={3}
+        moreLinkText={(num) => `+${num} mais`}
       />
 
       {ModalNovoAgendamento}

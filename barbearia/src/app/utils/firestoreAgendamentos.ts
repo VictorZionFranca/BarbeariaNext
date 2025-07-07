@@ -62,6 +62,21 @@ export async function listarAgendamentos(filtros?: {
 
 // Criar novo agendamento
 export async function criarAgendamento(agendamento: Omit<Agendamento, "id" | "criadoEm">) {
+  // Validar dados obrigatórios
+  if (!agendamento.data || !agendamento.hora || !agendamento.colaboradorId || !agendamento.servicoId) {
+    throw new Error("Dados obrigatórios não fornecidos para criar agendamento");
+  }
+
+  // Validar formato da data
+  if (!agendamento.data.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    throw new Error("Formato de data inválido. Use YYYY-MM-DD");
+  }
+
+  // Validar formato da hora
+  if (!agendamento.hora.match(/^\d{2}:\d{2}$/)) {
+    throw new Error("Formato de hora inválido. Use HH:mm");
+  }
+
   // Verificar conflito de horário para o mesmo colaborador considerando duração dos serviços
   const agendamentosRef = collection(db, "agendamentos");
   const q = query(
@@ -72,23 +87,59 @@ export async function criarAgendamento(agendamento: Omit<Agendamento, "id" | "cr
   );
   const snapshot = await getDocs(q);
   
-  // Calcular duração do novo agendamento (assumindo 30 min se não especificado)
-  const duracaoNovo = 30; // Em minutos - você pode ajustar baseado no serviço
+  // Calcular duração do novo agendamento
+  // Por enquanto, vamos usar 30 min como padrão, mas idealmente deveria vir do serviço
+  const duracaoNovo = 30; // Em minutos - TODO: buscar duração real do serviço
+  
   const [horaNovo, minNovo] = agendamento.hora.split(":").map(Number);
+  if (isNaN(horaNovo) || isNaN(minNovo) || horaNovo < 0 || horaNovo > 23 || minNovo < 0 || minNovo > 59) {
+    throw new Error("Valores de hora/minuto inválidos");
+  }
+  
   const inicioNovo = horaNovo * 60 + minNovo;
   const fimNovo = inicioNovo + duracaoNovo;
   
   // Verificar conflitos com agendamentos existentes
   for (const doc of snapshot.docs) {
     const agExistente = doc.data() as Agendamento;
+    
+    // Validar hora do agendamento existente
+    if (!agExistente.hora || !agExistente.hora.match(/^\d{2}:\d{2}$/)) {
+      console.warn("Formato de hora inválido no agendamento existente:", agExistente.hora, "ID:", doc.id);
+      continue;
+    }
+    
     const [horaExist, minExist] = agExistente.hora.split(":").map(Number);
+    if (isNaN(horaExist) || isNaN(minExist)) {
+      console.warn("Valores de hora/minuto inválidos no agendamento existente:", { horaExist, minExist }, "ID:", doc.id);
+      continue;
+    }
+    
     const inicioExist = horaExist * 60 + minExist;
-    const duracaoExist = 30; // Em minutos - você pode ajustar baseado no serviço
+    const duracaoExist = 30; // Em minutos - TODO: buscar duração real do serviço
     const fimExist = inicioExist + duracaoExist;
     
     // Verificar sobreposição
+    // Conflito ocorre quando:
+    // - O início do novo agendamento está dentro do agendamento existente, OU
+    // - O fim do novo agendamento está dentro do agendamento existente, OU
+    // - O novo agendamento engloba completamente o agendamento existente
     if (inicioNovo < fimExist && fimNovo > inicioExist) {
-      throw new Error("Já existe um agendamento para este colaborador neste horário.");
+      const detalhesConflito = {
+        novo: {
+          inicio: `${horaNovo.toString().padStart(2, '0')}:${minNovo.toString().padStart(2, '0')}`,
+          fim: `${Math.floor(fimNovo / 60).toString().padStart(2, '0')}:${(fimNovo % 60).toString().padStart(2, '0')}`,
+          servico: agendamento.servicoNome
+        },
+        existente: {
+          inicio: agExistente.hora,
+          fim: `${Math.floor(fimExist / 60).toString().padStart(2, '0')}:${(fimExist % 60).toString().padStart(2, '0')}`,
+          servico: agExistente.servicoNome
+        }
+      };
+      
+      console.error("Conflito de horário detectado:", detalhesConflito);
+      throw new Error(`Já existe um agendamento para este colaborador neste horário. Conflito: ${detalhesConflito.existente.servico} (${detalhesConflito.existente.inicio}-${detalhesConflito.existente.fim})`);
     }
   }
   

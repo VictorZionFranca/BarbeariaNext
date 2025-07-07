@@ -6,13 +6,15 @@ const periodOptions = [
   { label: "Dia", value: "dia" },
   { label: "Mês", value: "mes" },
   { label: "Ano", value: "ano" },
-];
+] as const;
+
+type Periodo = typeof periodOptions[number]["value"];
 
 export default function BlocoServicoMaisAgendado() {
-  const [periodo, setPeriodo] = useState("dia");
+  const [periodo, setPeriodo] = useState<Periodo>("dia");
 
   // Mock de dados (substituir por dados reais depois)
-  const mockData = {
+  const mockData: Record<Periodo, { nome: string; quantidade: number }> = {
     dia: { nome: "Corte Masculino", quantidade: 4 },
     mes: { nome: "Barba Completa", quantidade: 35 },
     ano: { nome: "Corte + Barba", quantidade: 320 },

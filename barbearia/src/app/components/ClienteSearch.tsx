@@ -30,6 +30,12 @@ export default function ClienteSearch({
   // Buscar clientes quando o termo de busca mudar
   useEffect(() => {
     const searchClientes = async () => {
+      if (!searchTerm.trim()) {
+        setClientes([]);
+        setShowDropdown(false);
+        return;
+      }
+      
       setIsLoading(true);
       try {
         const resultados = await buscarClientesPorNome(searchTerm);
@@ -64,6 +70,9 @@ export default function ClienteSearch({
     if (selectedCliente) {
       setSearchTerm(selectedCliente.nomeCompleto);
       setShowDropdown(false);
+    } else {
+      setSearchTerm("");
+      setShowDropdown(false);
     }
   }, [selectedCliente]);
 
@@ -71,6 +80,16 @@ export default function ClienteSearch({
     onClienteSelect(cliente);
     setSearchTerm(cliente.nomeCompleto);
     setShowDropdown(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    // Se o campo estiver vazio, limpar a seleção
+    if (!value.trim()) {
+      onClienteSelect({} as Cliente); // Limpar seleção
+    }
   };
 
   return (
@@ -83,14 +102,12 @@ export default function ClienteSearch({
           className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black w-full"
           placeholder={placeholder}
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onFocus={() => {
-            if (!disabled) {
-              setShowDropdown(true);
-            }
-          }}
+          onChange={handleInputChange}
           autoComplete="off"
           disabled={disabled}
+          onFocus={() => {
+            if (searchTerm.trim()) setShowDropdown(true);
+          }}
         />
         {isLoading && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -100,7 +117,7 @@ export default function ClienteSearch({
       </div>
 
       {/* Dropdown de resultados */}
-      {showDropdown && (
+      {showDropdown && searchTerm.trim() && (
         <div
           ref={dropdownRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"

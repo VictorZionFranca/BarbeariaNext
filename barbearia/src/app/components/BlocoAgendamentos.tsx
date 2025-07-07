@@ -6,13 +6,15 @@ const periodOptions = [
   { label: "Dia", value: "dia" },
   { label: "Mês", value: "mes" },
   { label: "Ano", value: "ano" },
-];
+] as const;
+
+type Periodo = typeof periodOptions[number]["value"];
 
 export default function BlocoAgendamentos() {
-  const [periodo, setPeriodo] = useState("dia");
+  const [periodo, setPeriodo] = useState<Periodo>("dia");
 
   // Mock de dados (substituir por dados reais depois)
-  const mockData = {
+  const mockData: Record<Periodo, number> = {
     dia: 8,
     mes: 120,
     ano: 950,
