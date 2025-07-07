@@ -9,6 +9,7 @@ import {
   query,
   getDoc,
   deleteDoc,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../../lib/firebaseConfig";
 
@@ -24,7 +25,18 @@ export type Produto = {
   dataAtualizacao: Timestamp | null;
 };
 
+export type VendaProduto = {
+  id: string;
+  produtoId: string;
+  nomeProduto: string;
+  quantidadeVendida: number;
+  precoUnitario: number;
+  totalVenda: number;
+  dataVenda: Timestamp;
+};
+
 const produtosCollection = collection(db, "produtos");
+const vendasProdutosCollection = collection(db, "vendasProdutos");
 
 // Criar novo produto
 export async function criarProdutoComIdIncremental(
@@ -125,6 +137,80 @@ export async function atualizarQuantidadeProduto(
     });
   } catch (error) {
     console.error("Erro ao atualizar quantidade do produto:", error);
+    throw error;
+  }
+}
+
+// Criar nova venda de produto
+export async function criarVendaProduto(
+  venda: Omit<VendaProduto, "id" | "dataVenda">
+): Promise<string> {
+  try {
+    // Verificar se o produto existe e tem estoque suficiente
+    const produto = await buscarProdutoPorId(venda.produtoId);
+    if (!produto) {
+      throw new Error("Produto não encontrado");
+    }
+    
+    if (!produto.ativo) {
+      throw new Error("Produto inativo não pode ser vendido");
+    }
+    
+    if (produto.quantidade < venda.quantidadeVendida) {
+      throw new Error("Quantidade insuficiente em estoque");
+    }
+    
+    // Criar documento da venda
+    const vendaRef = doc(vendasProdutosCollection);
+    const vendaData = {
+      ...venda,
+      dataVenda: serverTimestamp(),
+    };
+    
+    await setDoc(vendaRef, vendaData);
+    
+    // Atualizar quantidade do produto
+    const novaQuantidade = produto.quantidade - venda.quantidadeVendida;
+    await atualizarQuantidadeProduto(venda.produtoId, novaQuantidade);
+    
+    return vendaRef.id;
+  } catch (error) {
+    console.error("Erro ao criar venda:", error);
+    throw error;
+  }
+}
+
+// Listar todas as vendas
+export async function listarVendasProdutos(): Promise<VendaProduto[]> {
+  try {
+    const q = query(vendasProdutosCollection, orderBy("dataVenda", "desc"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as VendaProduto[];
+  } catch (error) {
+    console.error("Erro ao listar vendas:", error);
+    throw error;
+  }
+}
+
+// Buscar vendas por produto
+export async function buscarVendasPorProduto(produtoId: string): Promise<VendaProduto[]> {
+  try {
+    const q = query(
+      vendasProdutosCollection,
+      orderBy("dataVenda", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as VendaProduto))
+      .filter((venda) => venda.produtoId === produtoId);
+  } catch (error) {
+    console.error("Erro ao buscar vendas por produto:", error);
     throw error;
   }
 }

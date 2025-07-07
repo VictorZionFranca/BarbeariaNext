@@ -108,7 +108,6 @@ export default function DashboardClientes() {
   return (
     <div className="flex flex-col mb-[50px]">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-black my-8">Dashboard de Clientes</h1>
       </div>
       {loading ? (
         <div className="text-center text-gray-500">Carregando dados...</div>

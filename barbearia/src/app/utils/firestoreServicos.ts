@@ -5,17 +5,8 @@ import { CollectionReference, DocumentData } from "firebase/firestore";
 
 const servicosCollection: CollectionReference<DocumentData> = collection(db, "servicos");
 
-export async function listarServicos() {
-  const q = query(servicosCollection, orderBy("nomeDoServico"));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-    ativo: doc.data().ativo ?? true
-  }));
-}
-
 export type Servico = {
+  id: string;
   nomeDoServico: string;
   valor: number;
   duracaoEmMinutos: number;
@@ -24,6 +15,19 @@ export type Servico = {
   ativo: boolean;
   dataAtualizacao?: Timestamp;
 };
+
+export async function listarServicos(): Promise<Servico[]> {
+  const q = query(servicosCollection, orderBy("nomeDoServico"));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    ativo: doc.data().ativo ?? true,
+    valor: doc.data().valor ?? 0,
+    nomeDoServico: doc.data().nomeDoServico ?? "",
+    duracaoEmMinutos: doc.data().duracaoEmMinutos ?? 0,
+  })) as Servico[];
+}
 
 export async function atualizarServico(id: string, servico: Servico) {
   return await updateDoc(doc(db, "servicos", id), {

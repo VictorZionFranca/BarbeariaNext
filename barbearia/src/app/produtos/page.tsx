@@ -11,9 +11,10 @@ import {
   criarProdutoComIdIncremental,
   atualizarProduto,
   deletarProduto,
+  criarVendaProduto,
   Produto,
 } from "../utils/firestoreProdutos";
-import { FaPencilAlt, FaTrash, FaPlus, FaEye } from "react-icons/fa";
+import { FaPencilAlt, FaTrash, FaPlus, FaEye, FaShoppingCart } from "react-icons/fa";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 
@@ -43,9 +44,16 @@ export default function ProdutosManager() {
     aberto: boolean;
     produto: Produto | null;
   }>({ aberto: false, produto: null });
+  const [modalVenda, setModalVenda] = useState<{
+    aberto: boolean;
+    produto: Produto | null;
+  }>({ aberto: false, produto: null });
   const [modalAnimando, setModalAnimando] = useState<
-    "cadastro" | "editar" | "excluir" | "visualizar" | null
+    "cadastro" | "editar" | "excluir" | "visualizar" | "venda" | null
   >(null);
+  const [vendaForm, setVendaForm] = useState({
+    quantidadeVendida: 1,
+  });
 
   const carregarProdutos = useCallback(async () => {
     const lista = await listarProdutos();
@@ -145,6 +153,82 @@ export default function ProdutosManager() {
         setErro("Não foi possível excluir o produto. Tente novamente.");
       }
     }
+  }
+
+  function handleVender(produto: Produto) {
+    setModalVenda({ aberto: true, produto });
+    setVendaForm({ quantidadeVendida: 1 });
+    setModalAnimando("venda");
+    setTimeout(() => setModalAnimando(null), 100);
+  }
+
+  function handleVendaChange(e: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    const quantidade = parseInt(value) || 0;
+    setVendaForm(prev => ({
+      ...prev,
+      [name]: quantidade,
+    }));
+  }
+
+  async function confirmarVenda() {
+    if (!modalVenda.produto) return;
+
+    const produto = modalVenda.produto;
+    const quantidadeVendida = vendaForm.quantidadeVendida;
+
+    // Validações
+    if (produto.quantidade === 0) {
+      setErro("Produto sem estoque não pode ser vendido.");
+      return;
+    }
+
+    if (quantidadeVendida <= 0) {
+      setErro("Quantidade deve ser maior que zero.");
+      return;
+    }
+
+    if (quantidadeVendida > produto.quantidade) {
+      setErro("Quantidade insuficiente em estoque.");
+      return;
+    }
+
+    if (!produto.ativo) {
+      setErro("Produto inativo não pode ser vendido.");
+      return;
+    }
+
+    try {
+      setErro("");
+      
+      // Criar venda
+      await criarVendaProduto({
+        produtoId: produto.id,
+        nomeProduto: produto.nome,
+        quantidadeVendida,
+        precoUnitario: produto.preco,
+        totalVenda: produto.preco * quantidadeVendida,
+      });
+
+      // Fechar modal e recarregar produtos
+      fecharModalVendaAnimado();
+      carregarProdutos();
+      setErro("Venda realizada com sucesso!");
+      setTimeout(() => setErro(null), 3000);
+    } catch (error) {
+      console.error("Erro ao realizar venda:", error);
+      setErro("Erro ao realizar venda. Tente novamente.");
+    }
+  }
+
+  function fecharModalVendaAnimado() {
+    setModalAnimando("venda");
+    setTimeout(() => {
+      setModalVenda({ aberto: false, produto: null });
+      setVendaForm({ quantidadeVendida: 1 });
+      setModalAnimando(null);
+      setErro("");
+    }, 300);
   }
 
   const produtosFiltrados = produtos.filter(
@@ -304,6 +388,18 @@ export default function ProdutosManager() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => handleVender(p)}
+                          disabled={p.quantidade === 0}
+                          className={`p-2 rounded-lg transition-colors duration-200 ${
+                            p.quantidade === 0
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-green-100 text-green-600 hover:bg-green-200"
+                          }`}
+                          title={p.quantidade === 0 ? "Sem estoque" : "Vender"}
+                        >
+                          <FaShoppingCart className="h-5 w-5" />
+                        </button>
                         <button
                           onClick={() => handleVisualizar(p)}
                           className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors duration-200"
@@ -906,6 +1002,130 @@ export default function ProdutosManager() {
                     type="button"
                     className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
                     onClick={fecharModalEditarAnimado}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Modal de Venda */}
+      {modalVenda.aberto &&
+        modalVenda.produto &&
+        typeof window !== "undefined" &&
+        document.body &&
+        createPortal(
+          <div
+            className="fixed inset-0 flex items-center justify-center z-[99999] bg-black bg-opacity-80 transition-opacity duration-300"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                fecharModalVendaAnimado();
+              }
+            }}
+          >
+            <div
+              className={`bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl border border-gray-200 relative
+                transform transition-all duration-300
+                ${
+                  modalAnimando === "venda"
+                    ? "opacity-0 -translate-y-80 scale-95"
+                    : "opacity-100 translate-y-0 scale-100"
+                }
+                overflow-y-auto max-h-[90vh]`}
+            >
+              <button
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                onClick={fecharModalVendaAnimado}
+                aria-label="Fechar"
+                type="button"
+              >
+                ×
+              </button>
+                             <h2 className="text-2xl font-bold mb-6 text-center text-black">
+                 Vender Produto
+               </h2>
+               
+               {/* Informações do Produto */}
+               <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                 <div className="flex items-center gap-4">
+                   <div className="relative h-20 w-20">
+                     <Image
+                       src={modalVenda.produto.imagemURL}
+                       alt={modalVenda.produto.nome}
+                       fill
+                       className="object-contain rounded"
+                       sizes="80px"
+                     />
+                   </div>
+                   <div>
+                     <h3 className="text-lg font-semibold text-gray-900">{modalVenda.produto.nome}</h3>
+                     <p className="text-sm text-gray-600">{modalVenda.produto.descricao}</p>
+                   </div>
+                 </div>
+               </div>
+
+               <form onSubmit={(e) => { e.preventDefault(); confirmarVenda(); }} className="flex flex-col gap-4">
+                 {/* Quantidade Disponível */}
+                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                   <label className="text-sm font-medium text-blue-800">Quantidade Disponível</label>
+                   <div className="text-lg font-bold text-blue-900">{modalVenda.produto.quantidade} unidades</div>
+                 </div>
+
+                 {/* Quantidade a Vender */}
+                 <div className="relative">
+                   <input
+                     name="quantidadeVendida"
+                     id="quantidadeVendida"
+                     type="number"
+                     min="1"
+                     max={modalVenda.produto.quantidade}
+                     placeholder=" "
+                     value={vendaForm.quantidadeVendida}
+                     onChange={handleVendaChange}
+                     className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black peer w-full"
+                     required
+                   />
+                   <label
+                     htmlFor="quantidadeVendida"
+                     className="absolute left-3 top-3 text-gray-500 bg-white px-1 transition-all duration-200 pointer-events-none
+                       peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500
+                       peer-focus:-top-3 peer-focus:text-xs peer-focus:text-black
+                       peer-[&:not(:placeholder-shown)]:-top-3 peer-[&:not(:placeholder-shown)]:text-xs peer-[&:not(:placeholder-shown)]:text-black"
+                   >
+                     Quantidade a Vender
+                   </label>
+                 </div>
+
+                 {/* Preço Unitário */}
+                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                   <label className="text-sm font-medium text-green-800">Preço Unitário</label>
+                   <div className="text-lg font-bold text-green-900">{formatarPreco(modalVenda.produto.preco)}</div>
+                 </div>
+
+                 {/* Total da Venda */}
+                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                   <label className="text-sm font-medium text-purple-800">Total da Venda</label>
+                   <div className="text-xl font-bold text-purple-900">
+                     {formatarPreco(modalVenda.produto.preco * vendaForm.quantidadeVendida)}
+                   </div>
+                 </div>
+                {erro && (
+                  <span className="text-red-500 text-center">{erro}</span>
+                )}
+                <div className="flex gap-4 mt-4 justify-center">
+                  <button
+                    type="submit"
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
+                  >
+                    Vender
+                  </button>
+                  <button
+                    type="button"
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-6 py-2 rounded-lg transition-colors duration-200"
+                    onClick={fecharModalVendaAnimado}
                   >
                     Cancelar
                   </button>
