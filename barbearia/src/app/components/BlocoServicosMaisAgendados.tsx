@@ -56,7 +56,7 @@ export default function BlocoServicosMaisAgendados() {
     try {
       const dataInicio = getDataInicio(periodo);
       const dataFim = getDataFim(periodo);
-      const agendamentos = await listarAgendamentos({ status: "ativo" });
+      const agendamentos = await listarAgendamentos({ status: "finalizado" });
       const agendamentosPeriodo = agendamentos.filter(ag => {
         const dataAgendamento = ag.data;
         return dataAgendamento >= dataInicio && dataAgendamento <= dataFim;

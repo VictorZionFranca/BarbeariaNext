@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from "react";
 import { FaClock } from "react-icons/fa";
 import { listarAgendamentos } from "../utils/firestoreAgendamentos";
+import { listarServicos, Servico } from "../utils/firestoreServicos";
+import { listarColaboradores, Colaborador } from "../utils/firestoreColaboradores";
 
 interface Agendamento {
   id?: string;
@@ -12,6 +14,8 @@ interface Agendamento {
   servicoNome: string;
   status: string;
   unidadeNome?: string;
+  servicoId?: string;
+  colaboradorId?: string;
 }
 
 export default function BlocoUltimosAgendamentos() {
@@ -19,6 +23,8 @@ export default function BlocoUltimosAgendamentos() {
   const [carregando, setCarregando] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [animandoSaida, setAnimandoSaida] = useState(false);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
 
   useEffect(() => {
     async function fetchAgendamentos() {
@@ -37,6 +43,8 @@ export default function BlocoUltimosAgendamentos() {
       }
     }
     fetchAgendamentos();
+    listarServicos().then(setServicos);
+    listarColaboradores().then(setColaboradores);
   }, []);
 
   function abrirModal() {
@@ -51,6 +59,15 @@ export default function BlocoUltimosAgendamentos() {
   }
 
   function renderAgendamento(ag: Agendamento) {
+    // Buscar valor do serviço
+    const servico = servicos.find(s => s.id === ag.servicoId);
+    const valor = servico ? servico.valor : null;
+    // Buscar unidade
+    let unidade = ag.unidadeNome;
+    if (!unidade && ag.colaboradorId) {
+      const colab = colaboradores.find(c => c.id === ag.colaboradorId);
+      unidade = colab?.unidadeNome || undefined;
+    }
     return (
       <li key={ag.id} className="flex items-center gap-3 p-2 border-b border-gray-100 last:border-b-0">
         <FaClock className="text-green-600 text-lg flex-shrink-0" />
@@ -60,9 +77,17 @@ export default function BlocoUltimosAgendamentos() {
             <span className="text-xs text-gray-500">• {ag.servicoNome}</span>
           </div>
           <div className="text-xs text-gray-600 truncate">
-            Profissional: {ag.colaboradorNome} {ag.unidadeNome && <span>• {ag.unidadeNome}</span>}
+            Profissional: {ag.colaboradorNome}
           </div>
-          <div className="text-xs text-gray-400">
+          {unidade && (
+            <div className="text-xs text-gray-500 mt-1">Unidade: {unidade}</div>
+          )}
+          {valor !== null && (
+            <div className="text-xs text-gray-500 mt-0.5">
+              Valor: <span className="text-green-700">{valor.toFixed(2).replace('.', ',')}</span>
+            </div>
+          )}
+          <div className="text-xs text-gray-400 mt-0.5">
             {ag.data.split("-").reverse().join("/")} {ag.hora}
           </div>
         </div>
@@ -72,16 +97,18 @@ export default function BlocoUltimosAgendamentos() {
 
   return (
     <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md w-full">
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-3 mb-2 flex-wrap min-w-0 overflow-x-auto">
         <FaClock className="text-green-600 text-2xl" />
         <span className="text-sm text-gray-600 font-semibold uppercase tracking-wide">Últimos Agendamentos</span>
-        <button
-          className="ml-auto bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded-lg text-sm transition-colors duration-200"
-          onClick={abrirModal}
-          disabled={carregando || agendamentos.length <= 3}
-        >
-          Ver mais
-        </button>
+        <div className="ml-auto flex-shrink-0 mt-2 md:mt-0">
+          <button
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1 rounded-lg text-sm transition-colors duration-200"
+            onClick={abrirModal}
+            disabled={carregando || agendamentos.length <= 3}
+          >
+            Ver mais
+          </button>
+        </div>
       </div>
       {carregando ? (
         <div className="text-center text-gray-500 py-8">Carregando agendamentos...</div>
