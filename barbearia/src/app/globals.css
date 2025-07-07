@@ -7,6 +7,12 @@
     -webkit-text-fill-color: #000000 !important; /* Ajuste a cor do texto */
     transition: background-color 5000s ease-in-out 0s;
   }
+  .animate-fade-in {
+    animation: fadeInBg 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  .animate-modal-in {
+    animation: modalIn 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
 }
 
 input:-webkit-autofill,
@@ -68,4 +74,13 @@ body {
 
 input:-webkit-autofill + button {
   color: black !important; /* Força o ícone a ser preto no autofill */
+}
+
+@keyframes fadeInBg {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(30px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }

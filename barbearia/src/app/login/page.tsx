@@ -8,7 +8,7 @@ import "../globals.css";
 import Image from "next/image";
 
 export default function Login() {
-  const { user, loading, userName, login, authError } = useAuth();
+  const { user, loading, userInfo, login, authError } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -18,11 +18,11 @@ export default function Login() {
   const [errorVisible, setErrorVisible] = useState(false);
 
   useEffect(() => {
-    // Só redireciona se estiver autenticado E for admin (userName existe)
-    if (!loading && user && userName) {
+    // Só redireciona se estiver autenticado E for admin (userInfo existe)
+    if (!loading && user && userInfo) {
       router.replace("/");
     }
-  }, [user, userName, loading, router]);
+  }, [user, userInfo, loading, router]);
 
   useEffect(() => {
     // Se houver um erro, faz a mensagem aparecer e depois desaparecer após 3 segundos

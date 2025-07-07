@@ -43,7 +43,7 @@ export default function NoticiasPage() {
     }, 300); // Tempo da animação
   }
 
-  const { userName } = useAuth();
+  const { userInfo } = useAuth();
 
   const [noticias, setNoticias] = useState<Noticia[]>([]);
   const [busca, setBusca] = useState("");
@@ -140,14 +140,14 @@ export default function NoticiasPage() {
         conteudo: formConteudo,
         imagemURL: formImagemURL,
         ativo: formAtivo,
-        autor: userName,
+        autor: userInfo?.nome ?? null,
       });
     } else {
       // Criar nova notícia
       await criarNoticiaComIdIncremental({
         titulo: formTitulo,
         conteudo: formConteudo,
-        autor: userName,
+        autor: userInfo?.nome ?? null,
         imagemURL: formImagemURL,
         ativo: formAtivo,
       });

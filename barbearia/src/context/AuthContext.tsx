@@ -4,11 +4,13 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { onAuthStateChanged, User, setPersistence, browserLocalPersistence, signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth } from "../lib/firebaseConfig";
-import { fetchUserNameByUid } from "../app/utils/firestoreUtils";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../lib/firebaseConfig";
 
+type UserInfo = { nome: string; foto?: string };
 type AuthContextType = {
   user: User | null;
-  userName: string | null;
+  userInfo: UserInfo | null;
   loading: boolean;
   authError: string | null;
   refreshAuth: () => void;
@@ -18,7 +20,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  userName: null,
+  userInfo: null,
   loading: true,
   authError: null,
   refreshAuth: () => {},
@@ -28,7 +30,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const router = useRouter();
@@ -46,20 +48,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Verificar se é admin
-      const name = await fetchUserNameByUid(user.uid);
-      if (!name) {
+      // Buscar nome e foto do Firestore
+      const ref = doc(db, "admin", user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
         throw new Error("Acesso negado! Este sistema é exclusivo para administradores.");
       }
+      const data = snap.data();
+      const info: UserInfo = { nome: data.nome || "", foto: data.foto || undefined };
 
       // Salvar token no localStorage
       const token = await user.getIdToken();
       localStorage.setItem('authToken', token);
       localStorage.setItem('userUid', user.uid);
-      localStorage.setItem('userName', name);
+      localStorage.setItem('userInfo', JSON.stringify(info));
 
       setUser(user);
-      setUserName(name);
+      setUserInfo(info);
       
       router.replace("/");
     } catch (error: unknown) {
@@ -81,10 +86,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Limpar dados locais
       localStorage.removeItem('authToken');
       localStorage.removeItem('userUid');
-      localStorage.removeItem('userName');
+      localStorage.removeItem('userInfo');
       
       setUser(null);
-      setUserName(null);
+      setUserInfo(null);
       setAuthError(null);
       
       router.push("/login");
@@ -100,26 +105,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (currentUser) {
       try {
-        const name = await fetchUserNameByUid(currentUser.uid);
-        if (name) {
-          setUserName(name);
+        const ref = doc(db, "admin", currentUser.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data();
+          const info: UserInfo = { nome: data.nome || "", foto: data.foto || undefined };
+          setUserInfo(info);
           // Atualizar token
           const token = await currentUser.getIdToken(true);
           localStorage.setItem('authToken', token);
           localStorage.setItem('userUid', currentUser.uid);
-          localStorage.setItem('userName', name);
+          localStorage.setItem('userInfo', JSON.stringify(info));
         } else {
           setAuthError(null);
-          setUserName(null);
+          setUserInfo(null);
           await logout();
         }
       } catch (error) {
-        console.error("Erro ao buscar nome de usuário:", error);
+        console.error("Erro ao buscar dados do usuário:", error);
         setAuthError("Erro ao autenticar usuário");
         await logout();
       }
     } else {
-      setUserName(null);
+      setUserInfo(null);
     }
     
     setLoading(false);
@@ -133,30 +141,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (authUser) {
         try {
-          const name = await fetchUserNameByUid(authUser.uid);
-          if (name) {
-            setUserName(name);
+          const ref = doc(db, "admin", authUser.uid);
+          const snap = await getDoc(ref);
+          if (snap.exists()) {
+            const data = snap.data();
+            const info: UserInfo = { nome: data.nome || "", foto: data.foto || undefined };
+            setUserInfo(info);
             // Atualizar token
             const token = await authUser.getIdToken();
             localStorage.setItem('authToken', token);
             localStorage.setItem('userUid', authUser.uid);
-            localStorage.setItem('userName', name);
+            localStorage.setItem('userInfo', JSON.stringify(info));
           } else {
             setAuthError(null);
-            setUserName(null);
+            setUserInfo(null);
             await logout();
           }
         } catch (error) {
-          console.error("Erro ao buscar nome de usuário:", error);
+          console.error("Erro ao buscar dados do usuário:", error);
           setAuthError("Erro ao autenticar usuário");
           await logout();
         }
       } else {
-        setUserName(null);
+        setUserInfo(null);
         // Limpar dados locais se não há usuário
         localStorage.removeItem('authToken');
         localStorage.removeItem('userUid');
-        localStorage.removeItem('userName');
+        localStorage.removeItem('userInfo');
       }
 
       setLoading(false);
@@ -166,7 +177,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [router, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, userName, loading, authError, refreshAuth, login, logout }}>
+    <AuthContext.Provider value={{ user, userInfo, loading, authError, refreshAuth, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
