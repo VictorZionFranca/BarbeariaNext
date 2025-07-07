@@ -117,7 +117,7 @@ export default function DashboardClientes() {
           <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md">
             <div className="flex items-center gap-3 mb-2">
               <FaUserCheck className="text-green-600 text-2xl" />
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1 min-w-0 overflow-x-auto">
                 {periodOptions.map((opt) => (
                   <button
                     key={opt.value}
@@ -144,7 +144,7 @@ export default function DashboardClientes() {
           <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md">
             <div className="flex items-center gap-3 mb-2">
               <FaUserTimes className="text-red-600 text-2xl" />
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1 min-w-0 overflow-x-auto">
                 {periodOptions.map((opt) => (
                   <button
                     key={opt.value}

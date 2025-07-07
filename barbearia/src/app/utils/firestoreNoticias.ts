@@ -36,3 +36,19 @@ export async function criarNoticiaComIdIncremental(noticia: Omit<Noticia, "id" |
 
     return novoId;
 }
+
+export async function listarNoticias(): Promise<Noticia[]> {
+  const snapshot = await getDocs(noticiasCollection);
+  return snapshot.docs.map(docSnap => {
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      titulo: data.titulo,
+      conteudo: data.conteudo,
+      autor: data.autor ?? null,
+      imagemURL: data.imagemURL ?? "",
+      ativo: data.ativo ?? false,
+      dataPublicacao: data.dataPublicacao ?? null,
+    } as Noticia;
+  });
+}
