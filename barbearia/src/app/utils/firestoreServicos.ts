@@ -29,7 +29,7 @@ export async function listarServicos(): Promise<Servico[]> {
   })) as Servico[];
 }
 
-export async function atualizarServico(id: string, servico: Servico) {
+export async function atualizarServico(id: string, servico: Omit<Servico, "id">) {
   return await updateDoc(doc(db, "servicos", id), {
     ...servico,
     dataAtualizacao: Timestamp.now()
@@ -40,7 +40,7 @@ export async function deletarServico(id: string) {
   return await deleteDoc(doc(db, "servicos", id));
 }
 
-export async function criarServicoComIdIncremental(servico: Servico) {
+export async function criarServicoComIdIncremental(servico: Omit<Servico, "id">) {
   // Busca todos os documentos para encontrar o maior número
   const snapshot = await getDocs(servicosCollection);
   let maior = 0;
