@@ -103,7 +103,7 @@ export default function BlocoServicoMaisAgendado() {
   }, [periodo, buscarServicoMaisAgendado]);
 
   return (
-    <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 min-h-[140px] shadow-md w-full">
+    <section className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col w-full">
       <div className="flex items-center gap-3 mb-2">
         <FaCut className="text-pink-600 text-2xl" />
         <div className="flex gap-1">

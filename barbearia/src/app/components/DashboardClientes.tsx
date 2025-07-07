@@ -106,7 +106,7 @@ export default function DashboardClientes() {
   });
 
   return (
-    <div className="flex flex-col mb-[50px]">
+    <div className="flex flex-col">
       <div className="mb-6">
       </div>
       {loading ? (
