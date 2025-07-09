@@ -2,7 +2,7 @@
 
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useState, useEffect } from "react";
-import { FaUserCircle, FaMoon, FaSun, FaSignOutAlt, FaHistory, FaLock, FaEdit, FaTimes, FaCheck } from "react-icons/fa";
+import { FaUserCircle, FaSignOutAlt, FaLock, FaEdit, FaTimes, FaCheck } from "react-icons/fa";
 import Image from "next/image";
 import { useAuth } from "../../context/AuthContext";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -11,25 +11,20 @@ import { updateEmail, reauthenticateWithCredential, EmailAuthProvider, updatePas
 
 export default function Perfil() {
   const { user, logout } = useAuth();
-  const [usuario, setUsuario] = useState<{ nome: string; email: string; telefone?: string; foto?: string }>({ nome: "", email: "" });
+  const [usuario, setUsuario] = useState<{ nome: string; email: string; telefone?: string; foto?: string; emailAlternativo?: string }>({ nome: "", email: "" });
   const [loading, setLoading] = useState(true);
   const [modalPerfil, setModalPerfil] = useState(false);
   const [modalSenha, setModalSenha] = useState(false);
   const [editNome, setEditNome] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editTelefone, setEditTelefone] = useState("");
+  const [editEmailAlternativo, setEditEmailAlternativo] = useState("");
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmaSenha, setConfirmaSenha] = useState("");
   const [feedback, setFeedback] = useState<{ tipo: "sucesso" | "erro"; msg: string } | null>(null);
-  const [tema, setTema] = useState("claro");
   const [fotoPreview, setFotoPreview] = useState<string | undefined>(undefined);
   const [modalSair, setModalSair] = useState(false);
-  // Mock de histórico de acessos
-  const historicoAcessos = [
-    { data: "10/06/2024 14:32", ip: "192.168.0.1" },
-    { data: "09/06/2024 18:10", ip: "192.168.0.2" },
-    { data: "08/06/2024 09:45", ip: "192.168.0.3" },
-  ];
 
   useEffect(() => {
     async function fetchAdminData() {
@@ -45,6 +40,7 @@ export default function Perfil() {
             email: data.email || user.email || "",
             telefone: data.telefone || "",
             foto: data.foto || "",
+            emailAlternativo: data.emailAlternativo || "",
           });
           setFotoPreview(data.foto || "");
         } else {
@@ -62,6 +58,8 @@ export default function Perfil() {
     setEditNome(usuario.nome);
     setEditEmail(usuario.email);
     setFotoPreview(usuario.foto || "");
+    setEditTelefone(usuario.telefone || "");
+    setEditEmailAlternativo(usuario.emailAlternativo || "");
     setSenhaAtual("");
     setFeedback(null);
     setModalPerfil(true);
@@ -75,9 +73,9 @@ export default function Perfil() {
       return;
     }
     try {
-      // Atualizar nome/email/foto no Firestore
+      // Atualizar nome/email/foto/telefone/emailAlternativo no Firestore
       const ref = doc(db, "admin", user.uid);
-      await updateDoc(ref, { nome: editNome, email: editEmail, foto: fotoPreview });
+      await updateDoc(ref, { nome: editNome, email: editEmail, foto: fotoPreview, telefone: editTelefone, emailAlternativo: editEmailAlternativo });
       // Atualizar e-mail no Auth se mudou
       if (user.email !== editEmail) {
         if (!senhaAtual) {
@@ -88,7 +86,7 @@ export default function Perfil() {
         await reauthenticateWithCredential(user, cred);
         await updateEmail(user, editEmail);
       }
-      setUsuario((prev) => ({ ...prev, nome: editNome, email: editEmail, foto: fotoPreview }));
+      setUsuario((prev) => ({ ...prev, nome: editNome, email: editEmail, foto: fotoPreview, telefone: editTelefone, emailAlternativo: editEmailAlternativo }));
       setModalPerfil(false);
       setFeedback({ tipo: "sucesso", msg: "Dados atualizados com sucesso!" });
     } catch (err: unknown) {
@@ -165,14 +163,6 @@ export default function Perfil() {
                   <FaEdit />
                 </button>
               </h2>
-              <div className="flex items-center gap-2 ml-4">
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200 font-semibold" onClick={openModalSenha}>
-                  <FaLock /> Alterar senha
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors" onClick={() => setModalSair(true)}>
-                  <FaSignOutAlt className="transform -scale-x-100" /> Sair
-                </button>
-              </div>
             </div>
             <p className="text-gray-600 text-lg truncate">{usuario.email}</p>
             {usuario.telefone && <p className="text-gray-600">{usuario.telefone}</p>}
@@ -181,31 +171,14 @@ export default function Perfil() {
         {feedback && (
           <div className={`mt-2 text-sm ${feedback.tipo === "sucesso" ? "text-green-600" : "text-red-600"}`}>{feedback.msg}</div>
         )}
-        {/* Preferências de tema */}
-        <div className="flex items-center gap-6 mb-8">
-          <span className="font-semibold text-gray-700">Tema:</span>
-          <button className={`flex items-center gap-1 px-3 py-1 rounded-lg border ${tema === "claro" ? "bg-blue-100 border-blue-400 text-blue-700" : "bg-white border-gray-300 text-gray-700"}`} onClick={() => setTema("claro")} disabled>
-            <FaSun /> Claro
+        {/* Botões de ação */}
+        <div className="flex items-center gap-2 ml-4 mb-8">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200 font-semibold" onClick={openModalSenha}>
+            <FaLock /> Alterar senha
           </button>
-          <button className={`flex items-center gap-1 px-3 py-1 rounded-lg border ${tema === "escuro" ? "bg-blue-100 border-blue-400 text-blue-700" : "bg-white border-gray-300 text-gray-700"}`} onClick={() => setTema("escuro")} disabled>
-            <FaMoon /> Escuro
+          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors" onClick={() => setModalSair(true)}>
+            <FaSignOutAlt className="transform -scale-x-100" /> Sair
           </button>
-          <span className="text-xs text-gray-400 ml-2">(em breve)</span>
-        </div>
-        {/* Histórico de acessos */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <FaHistory className="text-gray-500" />
-            <span className="font-semibold text-gray-700">Histórico de acessos</span>
-          </div>
-          <ul className="text-sm text-gray-600 space-y-1">
-            {historicoAcessos.map((h, i) => (
-              <li key={i} className="flex gap-4 items-center">
-                <span className="font-mono text-gray-800">{h.data}</span>
-                <span className="text-xs text-gray-500">IP: {h.ip}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         {/* Modal Editar Perfil */}
@@ -228,6 +201,20 @@ export default function Perfil() {
                   onChange={e => setEditEmail(e.target.value)}
                   placeholder="E-mail"
                   required
+                  type="email"
+                />
+                <input
+                  className="border border-gray-300 rounded-lg p-2 text-black"
+                  value={editTelefone}
+                  onChange={e => setEditTelefone(e.target.value)}
+                  placeholder="Telefone (opcional)"
+                  type="text"
+                />
+                <input
+                  className="border border-gray-300 rounded-lg p-2 text-black"
+                  value={editEmailAlternativo}
+                  onChange={e => setEditEmailAlternativo(e.target.value)}
+                  placeholder="E-mail alternativo (opcional)"
                   type="email"
                 />
                 <input
