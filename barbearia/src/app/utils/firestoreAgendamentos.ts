@@ -18,7 +18,7 @@
 //   criadoEm: Timestamp
 // }
 
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, Timestamp, query, where, getDoc, deleteField } from "firebase/firestore";
 import { db } from "../../lib/firebaseConfig";
 
 export interface Agendamento {
@@ -163,7 +163,7 @@ export async function atualizarAgendamento(id: string, dados: Partial<Agendament
 // Cancelar agendamento (soft delete)
 export async function cancelarAgendamento(id: string) {
   const agendamentoRef = doc(db, "agendamentos", id);
-  await updateDoc(agendamentoRef, { status: "cancelado" });
+  await updateDoc(agendamentoRef, { status: "cancelado", horaPendencia: deleteField() });
 }
 
 // Marcar agendamento como concluído
